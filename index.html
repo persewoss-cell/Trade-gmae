@@ -577,7 +577,7 @@ function renderGroup(){
   h+=boardHTML();
 
   var redeemedObj=g.redeemed||{};
-  var pendingTotal=game.resources.reduce(function(sum,r){ return sum+Math.max(0,(g.resources[r.id]||0)-(redeemedObj[r.id]||0)); },0);
+  var pendingTotal=game.resources.reduce(function(sum,r){ return sum+(g.resources[r.id]||0); },0);
 
   h+='<div class="group-grid">';
 
@@ -586,7 +586,7 @@ function renderGroup(){
      '<p class="mini-label" style="margin-top:14px">생성한 자원</p>'+resChipsHTML(g.resources)+
      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">'+
        '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
-       '<button class="btn ore slim" id="redeemBtn"'+(pendingTotal<=0?" disabled":"")+'>교환 확인'+(pendingTotal>0?' · 대기 '+pendingTotal+'개':'')+'</button>'+
+       (pendingTotal>0?'<button class="btn ore slim" id="redeemBtn">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
      '</div>'+
      resChipsHTML(redeemedObj)+
      '</div>';
@@ -594,7 +594,7 @@ function renderGroup(){
   // 수식으로 자원 만들기
   h+='<div class="panel"><div class="block-label">수식으로 자원 만들기</div>'+
      '<p class="hint" style="margin-top:0">사칙연산 <b>+, −, ×, ÷</b> 를 모두 한 번씩은 사용해서 만든 식이어야 해요. 괄호 <b>( )</b> 는 써도 되고 안 써도 돼요. 계산 결과가 어떤 자원의 목표 숫자와 정확히 같으면 그 자원이 만들어져요.</p>'+
-     '<input class="formula-in" id="fIn" type="text" placeholder="예)  (3+2)×4÷2−1" value="'+esc(formula)+'">'+
+     '<input class="formula-in" id="fIn" type="text" inputmode="none" readonly placeholder="예)  (3+2)×4÷2−1" value="'+esc(formula)+'">'+
      '<div class="keypad" id="keypad"></div>'+
      '<button class="gen-btn" id="genBtn">자원 생성</button>'+
      (groupMsg?'<div class="msg '+(groupMsg.ok?"ok":"bad")+'">'+esc(groupMsg.text)+'</div>':'')+
@@ -682,7 +682,7 @@ function doRedeemAll(){
   db.runTransaction(function(tx){
     return tx.get(gameRef()).then(function(snap){
       var data=snap.data(), gg=data.groups[myIdx], red=gg.redeemed||{};
-      data.resources.forEach(function(r){ red[r.id]=gg.resources[r.id]||0; });
+      data.resources.forEach(function(r){ red[r.id]=(red[r.id]||0)+(gg.resources[r.id]||0); gg.resources[r.id]=0; });
       gg.redeemed=red;
       tx.update(gameRef(),{groups:data.groups});
     });
