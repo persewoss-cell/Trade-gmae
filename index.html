@@ -34,8 +34,6 @@
     .btn.slim{min-height:48px;padding:11px 16px;font-size:16px;}
     .num-in{min-height:52px;font-size:19px;}
     .key{min-height:52px;font-size:21px;}
-    .stepper{padding:8px 10px;}
-    .stepper button{width:36px;height:36px;font-size:18px;}
   }
 
   .btn{border:none;border-radius:11px;padding:12px 18px;font-size:16px;font-weight:800;min-height:48px;background:var(--admin);color:#fff;transition:filter .12s,transform .05s;}
@@ -113,17 +111,20 @@
   .groups{display:grid;grid-template-columns:1fr;gap:16px;}
   @media(min-width:720px){.groups{grid-template-columns:repeat(2,1fr);}}
   @media(min-width:1080px){.groups{grid-template-columns:repeat(3,1fr);}}
+  .group-grid{display:grid;grid-template-columns:1fr;gap:18px;margin-bottom:18px;}
+  .group-grid>.panel{margin-bottom:0;}
+  @media(min-width:820px){.group-grid{grid-template-columns:1fr 1fr;align-items:start;}}
   .gcard{background:var(--panel);border:1.5px solid var(--line);border-radius:14px;overflow:hidden;}
   .gcard .gtop{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1.5px solid var(--line);background:#f7f9fc;}
   .gcard .gtop .badge{width:26px;height:26px;border-radius:8px;background:var(--ink);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:13px;}
   .gcard .gtop .gn{font-weight:800;font-size:16px;}
   .gcard .gbody{padding:12px;}
 
-  .cards-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;}
-  .tile{position:relative;aspect-ratio:1/1.15;border-radius:10px;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:22px;font-weight:800;user-select:none;}
+  .cards-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-width:340px;}
+  .tile{position:relative;aspect-ratio:1/1.05;border-radius:9px;border:1.5px solid;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:16px;font-weight:800;user-select:none;}
   .tile.num{color:var(--num);background:var(--num-soft);border-color:var(--num-line);}
   .tile.op{color:var(--op);background:var(--op-soft);border-color:var(--op-line);}
-  .tile .cnt{position:absolute;top:-7px;right:-7px;min-width:22px;height:22px;padding:0 5px;background:var(--ink);color:#fff;border-radius:999px;font-family:var(--sans);font-size:12.5px;font-weight:800;display:flex;align-items:center;justify-content:center;}
+  .tile .cnt{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;background:var(--ink);color:#fff;border-radius:999px;font-family:var(--sans);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
   .tile.zero{opacity:.28;filter:grayscale(.5);} .tile.zero .cnt{background:#9aa7b6;}
   .mini-label{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 7px;}
   .res-chips{display:flex;flex-wrap:wrap;gap:6px;}
@@ -154,15 +155,15 @@
 
   /* ---- modal ---- */
   .overlay{position:fixed;inset:0;background:rgba(20,28,38,.5);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;z-index:50;}
-  .modal{background:#fff;border-radius:18px;max-width:640px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .modal{background:#fff;border-radius:18px;max-width:820px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .modal h3{font-size:19px;font-weight:800;margin-bottom:6px;}
   .modal .sub2{color:var(--muted);font-size:13.5px;margin-bottom:14px;}
-  .stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-top:8px;}
-  .stepper{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;}
-  .stepper .g{font-family:var(--mono);font-weight:800;font-size:15px;text-align:center;padding:5px 8px;border-radius:8px;white-space:nowrap;}
+  .stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:8px;}
+  .stepper{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;min-width:0;}
+  .stepper .g{font-family:var(--mono);font-weight:800;font-size:14px;text-align:center;padding:5px 7px;border-radius:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .stepper.num .g{color:var(--num);background:var(--num-soft);} .stepper.op .g{color:var(--op);background:var(--op-soft);}
-  .stepper .c{font-family:var(--mono);font-weight:800;font-size:16px;min-width:34px;text-align:center;}
-  .stepper button{width:32px;height:32px;border-radius:7px;border:1.5px solid var(--line);background:#f7f9fc;font-weight:800;font-size:16px;line-height:1;flex:none;}
+  .stepper .c{font-family:var(--mono);font-weight:800;font-size:15px;min-width:30px;text-align:center;flex:none;}
+  .stepper button{width:30px;height:30px;border-radius:7px;border:1.5px solid var(--line);background:#f7f9fc;font-weight:800;font-size:15px;line-height:1;flex:none;}
   .stepper .cap{font-size:10px;color:var(--muted);}
   .modal .foot{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
   .footnote{text-align:center;color:var(--muted);font-size:12.5px;margin:24px 0 6px;}
@@ -216,7 +217,7 @@ function defaultResources(){
   var targets=randomUniqueTargets(names.length,2,90);
   return names.map(function(n,i){ return {id:"r"+(i+1),name:n,target:targets[i]}; });
 }
-function makeGroup(i,resources){ var res={}; resources.forEach(function(r){ res[r.id]=0; }); return {name:(i+1)+"모둠",cards:emptyCards(),resources:res}; }
+function makeGroup(i,resources){ var res={},red={}; resources.forEach(function(r){ res[r.id]=0; red[r.id]=0; }); return {name:(i+1)+"모둠",cards:emptyCards(),resources:res,redeemed:red}; }
 function defaultGameData(groupCount){
   var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
   var resources=defaultResources(); var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources));
@@ -543,7 +544,7 @@ function saveSettings(){
       var data=snap.data();
       if(gc<data.groups.length){ if(!confirm("모둠 수를 "+data.groups.length+"→"+gc+"로 줄이면 마지막 모둠들의 카드·자원이 삭제돼요. 진행할까요?")) throw new Error("CANCEL"); data.groups.length=gc; }
       else { while(data.groups.length<gc) data.groups.push(makeGroup(data.groups.length,newRes)); }
-      data.groups.forEach(function(g){ var res={}; newRes.forEach(function(r){ res[r.id]=g.resources[r.id]||0; }); g.resources=res; });
+      data.groups.forEach(function(g){ var res={},red={}; newRes.forEach(function(r){ res[r.id]=g.resources[r.id]||0; red[r.id]=(g.redeemed&&g.redeemed[r.id])||0; }); g.resources=res; g.redeemed=red; });
       data.resources=newRes; data.weights=newW; data.groupCount=gc; data.nextId=counter;
       tx.update(gameRef(),{groups:data.groups,resources:newRes,weights:newW,groupCount:gc,nextId:counter});
     });
@@ -554,7 +555,7 @@ function doResetCards(){
   db.runTransaction(function(tx){
     return tx.get(gameRef()).then(function(snap){
       var data=snap.data();
-      data.groups.forEach(function(g){ g.cards=emptyCards(); var res={}; data.resources.forEach(function(r){res[r.id]=0;}); g.resources=res; });
+      data.groups.forEach(function(g){ g.cards=emptyCards(); var res={},red={}; data.resources.forEach(function(r){res[r.id]=0; red[r.id]=0;}); g.resources=res; g.redeemed=red; });
       tx.update(gameRef(),{groups:data.groups});
     });
   }).then(function(){
@@ -575,18 +576,31 @@ function renderGroup(){
   var s=$("screen"); var h=topbar(g.name);
   h+=boardHTML();
 
-  // 내 카드 + 자원
+  var redeemedObj=g.redeemed||{};
+  var pendingTotal=game.resources.reduce(function(sum,r){ return sum+Math.max(0,(g.resources[r.id]||0)-(redeemedObj[r.id]||0)); },0);
+
+  h+='<div class="group-grid">';
+
+  // 내 카드 + 자원 + 실물 카드 교환
   h+='<div class="panel"><div class="block-label" style="justify-content:space-between"><span>우리 모둠 카드</span></div>'+cardsGridHTML(g.cards)+
-     '<p class="mini-label" style="margin-top:14px">생성한 자원</p>'+resChipsHTML(g.resources)+'</div>';
+     '<p class="mini-label" style="margin-top:14px">생성한 자원</p>'+resChipsHTML(g.resources)+
+     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">'+
+       '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
+       '<button class="btn ore slim" id="redeemBtn"'+(pendingTotal<=0?" disabled":"")+'>교환 확인'+(pendingTotal>0?' · 대기 '+pendingTotal+'개':'')+'</button>'+
+     '</div>'+
+     resChipsHTML(redeemedObj)+
+     '</div>';
 
   // 수식으로 자원 만들기
   h+='<div class="panel"><div class="block-label">수식으로 자원 만들기</div>'+
      '<p class="hint" style="margin-top:0">사칙연산 <b>+, −, ×, ÷</b> 를 모두 한 번씩은 사용해서 만든 식이어야 해요. 괄호 <b>( )</b> 는 써도 되고 안 써도 돼요. 계산 결과가 어떤 자원의 목표 숫자와 정확히 같으면 그 자원이 만들어져요.</p>'+
-     '<input class="formula-in" id="fIn" type="text" placeholder="예)  (3+2)×4÷1" value="'+esc(formula)+'">'+
+     '<input class="formula-in" id="fIn" type="text" placeholder="예)  (3+2)×4÷2−1" value="'+esc(formula)+'">'+
      '<div class="keypad" id="keypad"></div>'+
      '<button class="gen-btn" id="genBtn">자원 생성</button>'+
      (groupMsg?'<div class="msg '+(groupMsg.ok?"ok":"bad")+'">'+esc(groupMsg.text)+'</div>':'')+
      '</div>';
+
+  h+='</div>';
 
   // 교환
   var incoming=trades.filter(function(t){return t.status==="pending"&&t.to===myIdx;});
@@ -628,6 +642,7 @@ function renderGroup(){
   pad.appendChild(back); pad.appendChild(clr);
 
   $("genBtn").onclick=doGenerate;
+  if($("redeemBtn")) $("redeemBtn").onclick=doRedeemAll;
   $("proposeBtn").onclick=openTradeModal;
   Array.prototype.forEach.call(s.querySelectorAll("[data-acc]"),function(b){ b.onclick=function(){ acceptTrade(b.dataset.acc); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-dec]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.dec,"declined"); }; });
@@ -660,6 +675,18 @@ function doGenerate(){
     });
   }).then(function(){ formula=""; groupMsg={ok:true,text:"성공! "+pretty(ev.value)+" = "+match.name+" 1개를 만들었어요."}; renderGroup(); })
     .catch(function(e){ var m=String(e.message||e); if(m.indexOf("SHORT:")===0) groupMsg={ok:false,text:"카드가 부족해요 — "+m.slice(6)+" 더 필요해요."}; else groupMsg={ok:false,text:"생성 중 문제가 생겼어요. 다시 시도해 주세요."}; renderGroup(); });
+}
+
+/* ---------------- 실물 카드 교환 ---------------- */
+function doRedeemAll(){
+  db.runTransaction(function(tx){
+    return tx.get(gameRef()).then(function(snap){
+      var data=snap.data(), gg=data.groups[myIdx], red=gg.redeemed||{};
+      data.resources.forEach(function(r){ red[r.id]=gg.resources[r.id]||0; });
+      gg.redeemed=red;
+      tx.update(gameRef(),{groups:data.groups});
+    });
+  }).then(function(){ renderGroup(); }).catch(function(){ alert("교환 확인 처리에 실패했어요."); });
 }
 
 /* ---------------- 교환 ---------------- */
