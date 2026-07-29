@@ -173,13 +173,13 @@
 <body>
 <div class="wrap">
   <div class="pagehead">
-    <h1>무역게임 · 실시간</h1>
-    <span class="sub">모둠마다 태블릿으로 접속 · 카드를 서로 교환하며 자원을 만들어요</span>
+    <h1>사칙연산 무역 게임</h1>
+    <span class="sub">사칙연산으로 자원을 만들고 조합하여 물건을 생산해요!</span>
   </div>
 
   <div id="screen"></div>
 
-  <p class="footnote">교실 와이파이로 여러 기기가 같은 게임을 실시간 공유합니다</p>
+  <p class="footnote">만든이: 하이쌤</p>
 </div>
 
 <script>
@@ -334,7 +334,7 @@ function renderLanding(){
   s.innerHTML=
   '<div class="landing">'+
     '<div class="lcard teacher"><span class="role">교사용</span><h2>게임 만들기</h2>'+
-      '<p>새 게임을 만들면 <b>방 코드</b>가 나와요. 칠판에 적어 모둠에 알려 주세요.</p>'+
+      '<p>새 게임을 만들면 <b>방 코드</b>가 나와요.</p>'+
       '<div class="field"><label>모둠 수 (1~12)</label><input class="num-in" id="createGroupCount" type="number" min="1" max="12" value="6" inputmode="numeric"></div>'+
       '<button class="btn" id="createBtn">새 게임 만들기</button>'+
       '<div style="height:1px;background:var(--line);margin:4px 0"></div>'+
@@ -343,7 +343,7 @@ function renderLanding(){
       '<button class="btn ghost" id="tOpen">교사 화면 열기</button>'+
     '</div>'+
     '<div class="lcard group"><span class="role">모둠용</span><h2>게임 참여하기</h2>'+
-      '<p>선생님이 알려준 <b>방 코드</b>를 입력하세요.</p>'+
+      '<p><b>방 코드</b>를 입력하세요.</p>'+
       '<input class="code-in" id="gCode" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="코드" />'+
       '<button class="btn ore" id="gNext">다음</button>'+
       '<div id="grpPickWrap"></div>'+
@@ -421,7 +421,7 @@ function renderTeacher(){
   // 관리자 패널
   h+=boardHTML();
   h+='<div class="panel admin">'+
-     '<div class="ctl-row"><div style="font-weight:800;font-size:18px;margin-right:auto">카드 배분 <span style="font-weight:600;color:var(--muted);font-size:14px">· 덱은 줄지 않아요</span></div>'+
+     '<div class="ctl-row"><div style="font-weight:800;font-size:18px;margin-right:auto">카드 배분 <span style="font-weight:600;color:var(--muted);font-size:14px">· 설정된 가중치에 따라 랜덤 배분</span></div>'+
         '<button class="btn ghost slim" id="tSettings">⚙ 설정</button>'+
         '<button class="btn danger slim" id="tResetCards">카드·자원 초기화</button>'+
         '<button class="btn danger slim" id="tDelete">게임 삭제</button></div>'+
@@ -434,7 +434,7 @@ function renderTeacher(){
         '<div class="field"><label>모든 모둠에</label><input class="num-in" id="distAllN" type="number" min="1" value="5" inputmode="numeric"></div>'+
         '<button class="btn ore" id="distAll">전체 모둠에 배분</button>'+
      '</div>'+
-     '<p class="hint">모든 기기에 실시간 반영돼요. 배분 비율은 설정에서 조절합니다.</p>'+
+     '<p class="hint">모든 기기에 실시간 반영돼요.</p>'+
      settingsPanelHTML()+
      '</div>';
 
