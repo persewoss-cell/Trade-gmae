@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>무역게임 · 실시간</title>
+<title>사칙연산 무역 게임</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
@@ -173,12 +173,12 @@
 <div class="wrap">
   <div class="pagehead">
     <h1>무역게임 · 실시간</h1>
-    <span class="sub">모둠마다 태블릿으로 접속 · 카드를 서로 교환하며 자원을 만들어요</span>
+    <span class="sub">카드를 조합해 자원을 생산하고 서로 교환하며 상품을 만들어요</span>
   </div>
 
   <div id="screen"></div>
 
-  <p class="footnote">교실 와이파이로 여러 기기가 같은 게임을 실시간 공유합니다</p>
+  <p class="footnote">만든사람: 하이쌤</p>
 </div>
 
 <script>
@@ -662,7 +662,7 @@ function doGenerate(){
   var missingOps=["+","−","×","÷"].filter(function(op){ return !need[op]; });
   if(missingOps.length){ groupMsg={ok:false,text:"사칙연산을 모두 한 번씩은 써야 해요. 아직 안 쓴 연산: "+missingOps.join(" ")}; return renderGroup(); }
   var match=null; for(var i=0;i<game.resources.length;i++){ if(Math.abs(ev.value-game.resources[i].target)<1e-9){ match=game.resources[i]; break; } }
-  if(!match){ groupMsg={ok:false,text:"계산 결과는 "+pretty(ev.value)+" 인데, 이 값과 일치하는 자원이 없어요."}; return renderGroup(); }
+  if(!match){ groupMsg={ok:false,text:"이 값과 일치하는 자원이 없어요."}; return renderGroup(); }
 
   db.runTransaction(function(tx){
     return tx.get(gameRef()).then(function(snap){
