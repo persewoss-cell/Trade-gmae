@@ -20,12 +20,23 @@
   }
   *{box-sizing:border-box;}
   html,body{margin:0;}
-  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.45;font-size:17px;padding:16px;-webkit-text-size-adjust:100%;}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.45;font-size:17px;padding:16px;-webkit-text-size-adjust:100%;touch-action:manipulation;}
   .wrap{max-width:1200px;margin:0 auto;}
   h1,h2,h3{margin:0;letter-spacing:-.01em;}
-  button{font-family:inherit;cursor:pointer;}
+  button{font-family:inherit;cursor:pointer;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
   input,select{font-family:inherit;}
   .hide{display:none !important;}
+
+  /* ---- tablet optimization ---- */
+  @media(min-width:768px){
+    body{font-size:19px;padding:20px;}
+    .btn{min-height:54px;padding:14px 22px;font-size:17px;}
+    .btn.slim{min-height:48px;padding:11px 16px;font-size:16px;}
+    .num-in{min-height:52px;font-size:19px;}
+    .key{min-height:52px;font-size:21px;}
+    .stepper{padding:8px 10px;}
+    .stepper button{width:36px;height:36px;font-size:18px;}
+  }
 
   .btn{border:none;border-radius:11px;padding:12px 18px;font-size:16px;font-weight:800;min-height:48px;background:var(--admin);color:#fff;transition:filter .12s,transform .05s;}
   .btn:hover{filter:brightness(1.06);} .btn:active{transform:translateY(1px);}
@@ -146,12 +157,12 @@
   .modal{background:#fff;border-radius:18px;max-width:640px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .modal h3{font-size:19px;font-weight:800;margin-bottom:6px;}
   .modal .sub2{color:var(--muted);font-size:13.5px;margin-bottom:14px;}
-  .stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px;margin-top:8px;}
-  .stepper{display:flex;align-items:center;justify-content:space-between;gap:4px;border:1.5px solid var(--line);border-radius:10px;padding:5px 6px;}
-  .stepper .g{font-family:var(--mono);font-weight:800;font-size:18px;min-width:16px;text-align:center;}
-  .stepper.num .g{color:var(--num);} .stepper.op .g{color:var(--op);}
-  .stepper .c{font-family:var(--mono);font-weight:800;font-size:16px;min-width:18px;text-align:center;}
-  .stepper button{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--line);background:#f7f9fc;font-weight:800;font-size:16px;line-height:1;}
+  .stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:8px;margin-top:8px;}
+  .stepper{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;}
+  .stepper .g{font-family:var(--mono);font-weight:800;font-size:15px;text-align:center;padding:5px 8px;border-radius:8px;white-space:nowrap;}
+  .stepper.num .g{color:var(--num);background:var(--num-soft);} .stepper.op .g{color:var(--op);background:var(--op-soft);}
+  .stepper .c{font-family:var(--mono);font-weight:800;font-size:16px;min-width:34px;text-align:center;}
+  .stepper button{width:32px;height:32px;border-radius:7px;border:1.5px solid var(--line);background:#f7f9fc;font-weight:800;font-size:16px;line-height:1;flex:none;}
   .stepper .cap{font-size:10px;color:var(--muted);}
   .modal .foot{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap;}
   .footnote{text-align:center;color:var(--muted);font-size:12.5px;margin:24px 0 6px;}
@@ -191,14 +202,25 @@ var OPS=["+","−","×","÷","(",")"]; var ALL=NUMS.concat(OPS);
 
 function emptyCards(){ var c={}; ALL.forEach(function(k){ c[k]=0; }); return c; }
 function defaultWeights(){ var w={}; ALL.forEach(function(k){ w[k]=1; }); return w; }
+function randomUniqueTargets(n,min,max){
+  var vals=[],seen={},tries=0;
+  while(vals.length<n && tries<5000){
+    tries++;
+    var v=min+Math.floor(Math.random()*(max-min+1));
+    if(!seen[v]){ seen[v]=true; vals.push(v); }
+  }
+  return vals;
+}
 function defaultResources(){
-  var base=[["석탄",6],["석유",12],["목재",18],["밀",20],["모래",24],["과일",30],["통조림",36],["쌀밥",42],["가구",48],["유리",54]];
-  return base.map(function(r,i){ return {id:"r"+(i+1),name:r[0],target:r[1]}; });
+  var names=["철광석","석유","과일","쌀","목재","모래"];
+  var targets=randomUniqueTargets(names.length,2,90);
+  return names.map(function(n,i){ return {id:"r"+(i+1),name:n,target:targets[i]}; });
 }
 function makeGroup(i,resources){ var res={}; resources.forEach(function(r){ res[r.id]=0; }); return {name:(i+1)+"모둠",cards:emptyCards(),resources:res}; }
-function defaultGameData(){
-  var resources=defaultResources(); var groups=[]; for(var i=0;i<6;i++) groups.push(makeGroup(i,resources));
-  return {createdAt:Date.now(),groupCount:6,nextId:11,resources:resources,weights:defaultWeights(),groups:groups};
+function defaultGameData(groupCount){
+  var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
+  var resources=defaultResources(); var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources));
+  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups};
 }
 
 function normalize(str){
@@ -311,6 +333,7 @@ function renderLanding(){
   '<div class="landing">'+
     '<div class="lcard teacher"><span class="role">교사용</span><h2>게임 만들기</h2>'+
       '<p>새 게임을 만들면 <b>방 코드</b>가 나와요. 칠판에 적어 모둠에 알려 주세요.</p>'+
+      '<div class="field"><label>모둠 수 (1~12)</label><input class="num-in" id="createGroupCount" type="number" min="1" max="12" value="6" inputmode="numeric"></div>'+
       '<button class="btn" id="createBtn">새 게임 만들기</button>'+
       '<div style="height:1px;background:var(--line);margin:4px 0"></div>'+
       '<p>이미 만든 게임을 다시 열려면 코드를 입력하세요.</p>'+
@@ -326,8 +349,10 @@ function renderLanding(){
   '</div>';
 
   $("createBtn").onclick=function(){
+    var gc=parseInt($("createGroupCount").value,10);
+    if(isNaN(gc)||gc<1||gc>12) return alert("모둠 수는 1~12 사이로 입력해 주세요.");
     var c=genCode();
-    db.collection("games").doc(c).set(defaultGameData()).then(function(){
+    db.collection("games").doc(c).set(defaultGameData(gc)).then(function(){
       role="teacher"; code=c; myIdx=null; subscribe();
     }).catch(function(){ alert("게임 생성에 실패했어요. 인터넷 연결과 파이어베이스 설정을 확인해 주세요."); });
   };
@@ -452,7 +477,11 @@ function settingsPanelHTML(){
   }).join("");
   return '<div class="settings open"><div class="settings-grid">'+
     '<div><div class="block-label">자원 목록 편집 <span style="font-weight:600;color:var(--muted)">· 목표 숫자는 서로 달라야 해요</span></div>'+
-      '<div id="resEditor">'+resRows+'</div><button class="btn ghost slim" id="addRes" style="margin-top:6px">＋ 자원 추가</button></div>'+
+      '<div id="resEditor">'+resRows+'</div>'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'+
+        '<button class="btn ghost slim" id="addRes">＋ 자원 추가</button>'+
+        '<button class="btn ghost slim" id="randomizeTargets">🎲 목표 숫자 무작위 재설정</button>'+
+      '</div></div>'+
     '<div><div class="block-label">모둠 수</div><div class="ctl-row" style="margin-bottom:20px"><input class="num-in" id="setGroupCount" type="number" min="1" max="12" value="'+game.groupCount+'" inputmode="numeric"><span class="hint" style="margin:0;align-self:center">1 ~ 12개</span></div>'+
       '<div class="block-label">배분 비율(가중치)</div><div class="weights-grid" id="weightsGrid">'+wCells+'</div>'+
       '<button class="btn ghost slim" id="weightsReset" style="margin-top:10px">비율 모두 1로</button></div>'+
@@ -466,6 +495,12 @@ function wireSettings(){
     div.innerHTML='<input class="rname" placeholder="자원 이름"><input class="rtarget" type="number" inputmode="numeric" placeholder="목표"><button class="del" type="button">×</button>';
     div.querySelector(".del").onclick=function(){ div.remove(); };
     $("resEditor").appendChild(div);
+  };
+  $("randomizeTargets").onclick=function(){
+    var rows=$("resEditor").querySelectorAll(".res-edit-row");
+    if(!rows.length) return;
+    var targets=randomUniqueTargets(rows.length,2,90);
+    Array.prototype.forEach.call(rows,function(row,i){ row.querySelector(".rtarget").value=targets[i]; });
   };
   $("weightsReset").onclick=function(){ Array.prototype.forEach.call($("weightsGrid").querySelectorAll("input"),function(i){i.value=1;}); };
   $("cancelSettings").onclick=function(){ settingsOpen=false; renderTeacher(); };
@@ -546,7 +581,8 @@ function renderGroup(){
 
   // 수식으로 자원 만들기
   h+='<div class="panel"><div class="block-label">수식으로 자원 만들기</div>'+
-     '<input class="formula-in" id="fIn" type="text" placeholder="예)  3×4+1" value="'+esc(formula)+'">'+
+     '<p class="hint" style="margin-top:0">사칙연산 <b>+, −, ×, ÷</b> 를 모두 한 번씩은 사용해서 만든 식이어야 해요. 괄호 <b>( )</b> 는 써도 되고 안 써도 돼요. 계산 결과가 어떤 자원의 목표 숫자와 정확히 같으면 그 자원이 만들어져요.</p>'+
+     '<input class="formula-in" id="fIn" type="text" placeholder="예)  (3+2)×4÷1" value="'+esc(formula)+'">'+
      '<div class="keypad" id="keypad"></div>'+
      '<button class="gen-btn" id="genBtn">자원 생성</button>'+
      (groupMsg?'<div class="msg '+(groupMsg.ok?"ok":"bad")+'">'+esc(groupMsg.text)+'</div>':'')+
@@ -608,6 +644,8 @@ function doGenerate(){
   var need=countCards(tk.tokens);
   var ev=evaluate(tk.tokens);
   if(ev.error){ groupMsg={ok:false,text:ev.error}; return renderGroup(); }
+  var missingOps=["+","−","×","÷"].filter(function(op){ return !need[op]; });
+  if(missingOps.length){ groupMsg={ok:false,text:"사칙연산을 모두 한 번씩은 써야 해요. 아직 안 쓴 연산: "+missingOps.join(" ")}; return renderGroup(); }
   var match=null; for(var i=0;i<game.resources.length;i++){ if(Math.abs(ev.value-game.resources[i].target)<1e-9){ match=game.resources[i]; break; } }
   if(!match){ groupMsg={ok:false,text:"계산 결과는 "+pretty(ev.value)+" 인데, 이 값과 일치하는 자원이 없어요."}; return renderGroup(); }
 
@@ -637,10 +675,10 @@ function openTradeModal(){
 
   function draw(){
     var giveGrid=giveCards().map(function(k){ var isNum=NUMS.indexOf(k)>=0,max=g.cards[k]||0,c=giveSel[k]||0;
-      return '<div class="stepper '+(isNum?"num":"op")+'"><button data-gminus="'+esc(k)+'">−</button><span class="g">'+esc(k)+'</span><span class="c">'+c+'</span><button data-gplus="'+esc(k)+'">＋</button></div>';
+      return '<div class="stepper '+(isNum?"num":"op")+'"><button data-gminus="'+esc(k)+'">−</button><span class="g">['+esc(k)+'카드]</span><span class="c">'+c+'장</span><button data-gplus="'+esc(k)+'">＋</button></div>';
     }).join("") || '<p class="hint" style="margin:0">가진 카드가 없어요. 아래에서 받고 싶은 카드만 골라 요청할 수 있어요.</p>';
     var wantGrid=ALL.map(function(k){ var isNum=NUMS.indexOf(k)>=0,c=wantSel[k]||0;
-      return '<div class="stepper '+(isNum?"num":"op")+'"><button data-wminus="'+esc(k)+'">−</button><span class="g">'+esc(k)+'</span><span class="c">'+c+'</span><button data-wplus="'+esc(k)+'">＋</button></div>';
+      return '<div class="stepper '+(isNum?"num":"op")+'"><button data-wminus="'+esc(k)+'">−</button><span class="g">['+esc(k)+'카드]</span><span class="c">'+c+'장</span><button data-wplus="'+esc(k)+'">＋</button></div>';
     }).join("");
     ov.innerHTML='<div class="modal"><h3>교환 제안</h3><p class="sub2">내가 줄 카드와 받고 싶은 카드를 정해 상대 모둠에 보냅니다.</p>'+
       '<div class="field" style="margin-bottom:14px"><label>어느 모둠에게?</label><select class="num-in" id="tmTo">'+
