@@ -135,9 +135,10 @@
   /* ---- group play ---- */
   .formula-in{width:100%;font-family:var(--mono);font-size:24px;font-weight:700;text-align:center;padding:12px;border:2px solid var(--line);border-radius:12px;letter-spacing:.06em;color:var(--ink);}
   .formula-in:focus{outline:none;border-color:var(--num);}
-  .keypad{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-top:9px;}
+  .keypad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:9px;}
   .key{border:1.5px solid var(--line);background:#fff;border-radius:9px;padding:9px 0;font-family:var(--mono);font-size:19px;font-weight:800;min-height:44px;}
   .key.n{color:var(--num);} .key.o{color:var(--op);} .key.act{font-family:var(--sans);font-size:13px;color:var(--muted);}
+  .key.clearall{grid-column:1 / -1;font-family:var(--sans);font-size:17px;font-weight:800;color:var(--err);background:var(--err-soft);border-color:var(--err-soft);min-height:52px;}
   .gen-btn{margin-top:10px;width:100%;background:var(--ore);color:#fff;border:none;border-radius:12px;padding:14px;font-size:18px;font-weight:800;min-height:54px;}
   .msg{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:14px;font-weight:600;line-height:1.5;}
   .msg.ok{background:var(--ok-soft);color:var(--ok);} .msg.bad{background:var(--err-soft);color:var(--err);}
@@ -202,7 +203,7 @@ var NUMS=["1","2","3","4","5","6","7","8","9"];
 var OPS=["+","−","×","÷","(",")"]; var ALL=NUMS.concat(OPS);
 
 function emptyCards(){ var c={}; ALL.forEach(function(k){ c[k]=0; }); return c; }
-function defaultWeights(){ var w={}; ALL.forEach(function(k){ w[k]=1; }); return w; }
+function defaultWeights(){ var w={}; ALL.forEach(function(k){ w[k]=(k==="+"||k==="−"||k==="×"||k==="÷")?3:1; }); return w; }
 function randomUniqueTargets(n,min,max){
   var vals=[],seen={},tries=0;
   while(vals.length<n && tries<5000){
@@ -635,18 +636,19 @@ function renderGroup(){
   var fIn=$("fIn");
   fIn.oninput=function(){ formula=fIn.value; };
   var pad=$("keypad");
+  var clearAll=document.createElement("button"); clearAll.type="button"; clearAll.className="key clearall"; clearAll.textContent="모두 지우기";
+  clearAll.onclick=function(){ fIn.value=""; formula=""; fIn.focus(); };
+  pad.appendChild(clearAll);
   var KEYPAD_ROWS=[
-    ["CLR","BACK","(",")","+"],
-    ["7","8","9","","−"],
-    ["4","5","6","","×"],
-    ["1","2","3","","÷"]
+    ["BACK","(",")","+"],
+    ["7","8","9","−"],
+    ["4","5","6","×"],
+    ["1","2","3","÷"]
   ];
   KEYPAD_ROWS.forEach(function(row){
     row.forEach(function(k){
-      if(k===""){ pad.appendChild(document.createElement("div")); return; }
       var b=document.createElement("button"); b.type="button";
-      if(k==="CLR"){ b.className="key act"; b.textContent="지우기"; b.onclick=function(){ fIn.value=""; formula=""; fIn.focus(); }; }
-      else if(k==="BACK"){ b.className="key act"; b.textContent="⌫"; b.onclick=function(){ fIn.value=fIn.value.slice(0,-1); formula=fIn.value; fIn.focus(); }; }
+      if(k==="BACK"){ b.className="key act"; b.textContent="⌫"; b.onclick=function(){ fIn.value=fIn.value.slice(0,-1); formula=fIn.value; fIn.focus(); }; }
       else{ b.className="key "+(NUMS.indexOf(k)>=0?"n":"o"); b.textContent=k; b.onclick=function(){ fIn.value+=k; formula=fIn.value; fIn.focus(); }; }
       pad.appendChild(b);
     });
