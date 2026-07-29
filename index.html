@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>사칙연산 무역 게임</title>
+<title>무역게임 · 실시간</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <style>
@@ -173,12 +173,12 @@
 <div class="wrap">
   <div class="pagehead">
     <h1>무역게임 · 실시간</h1>
-    <span class="sub">카드를 조합해 자원을 생산하고 서로 교환하며 상품을 만들어요</span>
+    <span class="sub">모둠마다 태블릿으로 접속 · 카드를 서로 교환하며 자원을 만들어요</span>
   </div>
 
   <div id="screen"></div>
 
-  <p class="footnote">만든사람: 하이쌤</p>
+  <p class="footnote">교실 와이파이로 여러 기기가 같은 게임을 실시간 공유합니다</p>
 </div>
 
 <script>
@@ -312,7 +312,7 @@ function subscribe(){
 function leave(){ if(unsubGame) unsubGame(); if(unsubTrades) unsubTrades(); unsubGame=unsubTrades=null; role=code=myIdx=null; game=null; trades=[]; formula=""; groupMsg=tradeMsg=null; clearSession(); renderLanding(); }
 
 /* ---------------- 랜딩 ---------------- */
-function genCode(){ var cs="ABCDEFGHJKLMNPQRSTUVWXYZ23456789",s=""; for(var i=0;i<4;i++) s+=cs[Math.floor(Math.random()*cs.length)]; return s; }
+function genCode(){ var s=""; for(var i=0;i<4;i++) s+=Math.floor(Math.random()*10); return s; }
 
 function renderSetup(extra){
   $("screen").innerHTML=
@@ -338,12 +338,12 @@ function renderLanding(){
       '<button class="btn" id="createBtn">새 게임 만들기</button>'+
       '<div style="height:1px;background:var(--line);margin:4px 0"></div>'+
       '<p>이미 만든 게임을 다시 열려면 코드를 입력하세요.</p>'+
-      '<input class="code-in" id="tCode" maxlength="4" placeholder="코드" />'+
+      '<input class="code-in" id="tCode" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="코드" />'+
       '<button class="btn ghost" id="tOpen">교사 화면 열기</button>'+
     '</div>'+
     '<div class="lcard group"><span class="role">모둠용</span><h2>게임 참여하기</h2>'+
       '<p>선생님이 알려준 <b>방 코드</b>를 입력하세요.</p>'+
-      '<input class="code-in" id="gCode" maxlength="4" placeholder="코드" />'+
+      '<input class="code-in" id="gCode" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="코드" />'+
       '<button class="btn ore" id="gNext">다음</button>'+
       '<div id="grpPickWrap"></div>'+
     '</div>'+
@@ -634,12 +634,23 @@ function renderGroup(){
   $("leaveBtn").onclick=leave;
   var fIn=$("fIn");
   fIn.oninput=function(){ formula=fIn.value; };
-  var keys=NUMS.concat(["+","−","×","÷","(",")"]), pad=$("keypad");
-  keys.forEach(function(k){ var b=document.createElement("button"); b.className="key "+(NUMS.indexOf(k)>=0?"n":"o"); b.type="button"; b.textContent=k;
-    b.onclick=function(){ fIn.value+=k; formula=fIn.value; fIn.focus(); }; pad.appendChild(b); });
-  var back=document.createElement("button"); back.className="key act"; back.type="button"; back.textContent="⌫"; back.onclick=function(){ fIn.value=fIn.value.slice(0,-1); formula=fIn.value; fIn.focus(); };
-  var clr=document.createElement("button"); clr.className="key act"; clr.type="button"; clr.textContent="지우기"; clr.onclick=function(){ fIn.value=""; formula=""; fIn.focus(); };
-  pad.appendChild(back); pad.appendChild(clr);
+  var pad=$("keypad");
+  var KEYPAD_ROWS=[
+    ["CLR","BACK","(",")","+"],
+    ["7","8","9","","−"],
+    ["4","5","6","","×"],
+    ["1","2","3","","÷"]
+  ];
+  KEYPAD_ROWS.forEach(function(row){
+    row.forEach(function(k){
+      if(k===""){ pad.appendChild(document.createElement("div")); return; }
+      var b=document.createElement("button"); b.type="button";
+      if(k==="CLR"){ b.className="key act"; b.textContent="지우기"; b.onclick=function(){ fIn.value=""; formula=""; fIn.focus(); }; }
+      else if(k==="BACK"){ b.className="key act"; b.textContent="⌫"; b.onclick=function(){ fIn.value=fIn.value.slice(0,-1); formula=fIn.value; fIn.focus(); }; }
+      else{ b.className="key "+(NUMS.indexOf(k)>=0?"n":"o"); b.textContent=k; b.onclick=function(){ fIn.value+=k; formula=fIn.value; fIn.focus(); }; }
+      pad.appendChild(b);
+    });
+  });
 
   $("genBtn").onclick=doGenerate;
   if($("redeemBtn")) $("redeemBtn").onclick=doRedeemAll;
