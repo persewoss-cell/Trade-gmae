@@ -164,10 +164,6 @@
   .tile .cnt{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;padding:0 4px;background:var(--ink);color:#fff;border-radius:999px;font-family:var(--sans);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;}
   .tile.zero{opacity:.28;filter:grayscale(.5);} .tile.zero .cnt{background:#9aa7b6;}
   .mini-label{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 7px;}
-  .res-chips{display:flex;flex-wrap:wrap;gap:6px;}
-  .chip{display:inline-flex;align-items:center;gap:6px;background:#f2f4f8;border:1.5px solid var(--line);border-radius:999px;padding:5px 11px;font-size:13.5px;font-weight:700;color:var(--muted);}
-  .chip.has{background:var(--ore-soft);border-color:var(--ore-line);color:#6f470f;}
-  .chip .cc{font-family:var(--mono);font-weight:800;color:var(--ore);}
 
   /* ---- group play ---- */
   .formula-in{width:100%;font-family:var(--mono);font-size:24px;font-weight:700;text-align:center;padding:12px;border:2px solid var(--line);border-radius:12px;letter-spacing:.06em;color:var(--ink);}
@@ -470,9 +466,16 @@ function cardsGridHTML(cardsObj){
     h+='<div class="tile '+(isNum?"num":"op")+(n===0?" zero":"")+'"><span>'+esc(k)+'</span><span class="cnt">'+n+'</span></div>'; });
   return h+'</div>';
 }
+function resourceCatClass(rname){
+  var found=null;
+  (game.scoreCategories||defaultScoreCategories()).forEach(function(cat,ci){
+    cat.items.forEach(function(it){ if(it.name===rname) found="sc"+((ci%4)+1); });
+  });
+  return found||"sc3";
+}
 function resChipsHTML(resObj){
-  var h='<div class="res-chips">';
-  game.resources.forEach(function(r){ var n=(resObj&&resObj[r.id])||0; h+='<span class="chip'+(n>0?" has":"")+'">'+esc(r.name)+'<span class="cc">'+n+'</span></span>'; });
+  var h='<div class="prod-row">';
+  game.resources.forEach(function(r){ var n=(resObj&&resObj[r.id])||0; h+='<span class="prod-chip '+resourceCatClass(r.name)+'">'+esc(r.name)+'<span class="cc">'+n+'</span></span>'; });
   return h+'</div>';
 }
 function boardHTML(){
@@ -537,14 +540,23 @@ function productChipsHTML(countsObj){
   var products=game.products||defaultProducts();
   var h='<div class="prod-row">';
   products.forEach(function(p){ var n=(countsObj&&countsObj[p.id])||0;
-    h+='<span class="prod-chip '+prodCatClass(p.category)+'" title="재료: '+esc(recipeText(p))+'">'+esc(p.name)+'<span class="cc">'+n+'</span></span>';
+    h+='<button type="button" class="prod-chip '+prodCatClass(p.category)+'" data-pinfo="'+esc(p.id)+'">'+esc(p.name)+'<span class="cc">'+n+'</span></button>';
   });
   return h+'</div>';
 }
-function productCatalogHTML(){
-  var products=game.products||defaultProducts();
-  function rowHTML(list){ return '<div class="prod-row">'+list.map(function(p){ return '<span class="prod-chip '+prodCatClass(p.category)+'" title="재료: '+esc(recipeText(p))+'">'+esc(p.name)+'</span>'; }).join("")+'</div>'; }
-  return rowHTML(products.slice(0,7))+rowHTML(products.slice(7,14));
+function showProductInfoPopup(pid){
+  var p=prodById(pid); if(!p) return;
+  var ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML='<div class="modal" style="max-width:340px"><h3>'+esc(p.name)+'</h3>'+
+    '<p class="sub2" style="margin-bottom:2px">필요한 재료</p>'+
+    '<p style="font-weight:800;font-size:15px;margin:0">'+esc(recipeText(p))+'</p>'+
+    '<div class="foot"><button class="btn ghost" id="piClose">닫기</button></div></div>';
+  document.body.appendChild(ov);
+  ov.querySelector("#piClose").onclick=function(){ document.body.removeChild(ov); };
+  ov.onclick=function(e){ if(e.target===ov) document.body.removeChild(ov); };
+}
+function wireProductChips(root){
+  Array.prototype.forEach.call(root.querySelectorAll("[data-pinfo]"),function(b){ b.onclick=function(){ showProductInfoPopup(b.getAttribute("data-pinfo")); }; });
 }
 
 function renderCurrent(){
@@ -629,6 +641,7 @@ function renderTeacher(){
   h+='</div>';
 
   s.innerHTML=h;
+  wireProductChips(s);
 
   $("leaveBtn").onclick=leave;
   $("tSettings").onclick=function(){ settingsOpen=!settingsOpen; renderTeacher(); };
@@ -940,8 +953,8 @@ function renderGroup(){
   // 교환
   var incoming=trades.filter(function(t){return t.status==="pending"&&t.to===myIdx;});
   var outgoing=trades.filter(function(t){return t.status==="pending"&&t.from===myIdx;});
-  h+='<div class="panel"><div class="block-label" style="justify-content:space-between"><span>카드 교환(무역)</span></div>'+
-     '<button class="btn trade" id="proposeBtn">다른 모둠에 교환 제안하기</button>'+
+  h+='<div class="panel"><div class="block-label">카드 교환(무역)</div>'+
+     '<div class="trade-box"><button class="btn trade" id="proposeBtn">다른 모둠에 교환 제안하기</button></div>'+
      '<div class="trade-box"><div class="block-label" style="margin-top:0">무역센터에서 생산품으로 교환하기</div>'+
        '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
        '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button>'+
@@ -979,6 +992,7 @@ function renderGroup(){
   }
 
   s.innerHTML=h;
+  wireProductChips(s);
 
   $("leaveBtn").onclick=leave;
   var fIn=$("fIn");
