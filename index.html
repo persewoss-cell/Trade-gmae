@@ -62,6 +62,8 @@
   .grp-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .grp-pick button{border:1.5px solid var(--ore-line);background:var(--ore-soft);color:#7a4d0e;border-radius:10px;padding:12px 0;font-weight:800;font-size:16px;}
   .grp-pick button.selected{background:var(--ore);color:#fff;border-color:var(--ore);}
+  .grp-pick.compact{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px;}
+  .grp-pick.compact button{padding:8px 4px;font-size:13px;}
   .setup{background:#fff;border:2px solid var(--err);border-radius:16px;padding:20px;max-width:720px;margin:0 auto;}
   .setup h2{color:var(--err);margin-bottom:8px;} .setup ol{margin:10px 0 0;padding-left:20px;} .setup li{margin-bottom:8px;}
   .setup code{background:#f2f4f8;padding:2px 6px;border-radius:6px;font-family:var(--mono);font-size:13px;}
@@ -1194,7 +1196,7 @@ function openTradeModal(){
       return '<div class="stepper '+cls+'"><button data-wminus="'+esc(k)+'">−</button><span class="g">['+esc(cardDisplayName(k))+'카드]</span><span class="c">'+c+'장</span><button data-wplus="'+esc(k)+'">＋</button></div>';
     }).join("");
     ov.innerHTML='<div class="modal"><h3>교환 제안</h3><p class="sub2">내가 줄 카드와 받고 싶은 카드를 정해 상대 모둠에 보냅니다.</p>'+
-      '<div class="field" style="margin-bottom:14px"><label>어느 모둠에게?</label><div class="grp-pick" id="tmToPick">'+
+      '<div class="field" style="margin-bottom:14px"><label>어느 모둠에게?</label><div class="grp-pick compact" id="tmToPick">'+
         others.map(function(o){return '<button type="button" data-to="'+o.i+'" class="'+(o.i===toIdx?"selected":"")+'">'+esc(o.name)+'</button>';}).join("")+'</div></div>'+
       '<p class="mini-label">내가 줄 카드 <span style="color:var(--muted);font-weight:600">(가진 만큼만)</span></p><div class="stepgrid">'+giveGrid+'</div>'+
       '<p class="mini-label" style="margin-top:14px">받고 싶은 카드</p><div class="stepgrid">'+wantGrid+'</div>'+
