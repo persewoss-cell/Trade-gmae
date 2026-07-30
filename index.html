@@ -80,11 +80,10 @@
   .panel{background:var(--panel);border:1.5px solid var(--line);border-radius:16px;padding:18px;margin-bottom:18px;box-shadow:0 3px 12px rgba(28,38,50,.05);}
   .panel.admin{border:2px solid var(--admin);}
 
-  .board-table{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
-  .res-cell{background:var(--ore-soft);border:1.5px solid var(--ore-line);border-radius:12px;padding:10px 12px;}
-  .res-cell .rn{font-weight:800;font-size:15px;color:#5f3c0c;display:block;}
-  .res-cell .rt{font-family:var(--mono);font-size:24px;font-weight:700;color:var(--ore);}
-  .res-cell .rt small{font-family:var(--sans);font-size:11px;color:var(--muted);font-weight:700;margin-left:2px;}
+  .board-table{display:grid;grid-template-columns:repeat(8,1fr);gap:8px;}
+  .res-cell{background:var(--ore-soft);border:1.5px solid var(--ore-line);border-radius:12px;padding:10px 6px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;}
+  .res-cell .rn{font-weight:800;font-size:13px;color:#5f3c0c;display:block;}
+  .res-cell .rt{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--ore);}
 
   .ctl-row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
   .field{display:flex;flex-direction:column;gap:5px;}
@@ -214,7 +213,7 @@ function randomUniqueTargets(n,min,max){
   return vals;
 }
 function defaultResources(){
-  var names=["철광석","석유","과일","쌀","목재","모래"];
+  var names=["물","밀","모래","목재","과일","목화","철광석","석유"];
   var targets=randomUniqueTargets(names.length,2,90);
   return names.map(function(n,i){ return {id:"r"+(i+1),name:n,target:targets[i]}; });
 }
@@ -222,7 +221,7 @@ function makeGroup(i,resources){ var res={},red={}; resources.forEach(function(r
 function defaultGameData(groupCount){
   var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
   var resources=defaultResources(); var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources));
-  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups};
+  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false};
 }
 
 function normalize(str){
@@ -399,7 +398,7 @@ function resChipsHTML(resObj){
 }
 function boardHTML(){
   var h='<div class="panel board"><div class="block-label">자원(광물) 목표 숫자</div><div class="board-table">';
-  game.resources.forEach(function(r){ h+='<div class="res-cell"><span class="rn">'+esc(r.name)+'</span><span class="rt">'+r.target+'<small>목표</small></span></div>'; });
+  game.resources.forEach(function(r){ h+='<div class="res-cell"><span class="rn">'+esc(r.name)+'</span><span class="rt">'+r.target+'</span></div>'; });
   return h+'</div></div>';
 }
 function miniCardsHTML(obj){
@@ -445,16 +444,26 @@ function renderTeacher(){
   else pend.forEach(function(t){
     h+='<div class="offer"><div class="ohead">'+esc(t.fromName)+' → '+esc(t.toName)+'</div>'+
        '<div class="oline">주는 카드: '+miniCardsHTML(t.give)+'</div>'+
-       '<div class="oline">받고 싶은 카드: '+miniCardsHTML(t.want)+'</div></div>';
+       '<div class="oline">받고 싶은 카드: '+miniCardsHTML(t.want)+'</div>'+
+       '<div class="oact"><button class="btn ore slim" data-acc="'+esc(t.id)+'">수락</button>'+
+       '<button class="btn danger slim" data-dec="'+esc(t.id)+'">거절</button></div></div>';
   });
   h+='</div>';
 
   // 전체 모둠 개요
   h+='<div class="block-label" style="margin:4px 2px 12px">모둠 현황</div><div class="groups">';
   game.groups.forEach(function(g,i){
+    var redeemedObj=g.redeemed||{};
+    var pendingTotal=game.resources.reduce(function(sum,r){ return sum+(g.resources[r.id]||0); },0);
     h+='<div class="gcard"><div class="gtop"><span class="badge">'+(i+1)+'</span><span class="gn">'+esc(g.name)+'</span></div>'+
        '<div class="gbody"><p class="mini-label">보유 카드</p>'+cardsGridHTML(g.cards)+
-       '<p class="mini-label" style="margin-top:12px">생성한 자원</p>'+resChipsHTML(g.resources)+'</div></div>';
+       '<p class="mini-label" style="margin-top:12px">생성한 자원</p>'+resChipsHTML(g.resources)+
+       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+         '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
+         (pendingTotal>0?'<button class="btn ore slim" data-redeem="'+i+'">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
+       '</div>'+
+       resChipsHTML(redeemedObj)+
+       '</div></div>';
   });
   h+='</div>';
 
@@ -466,6 +475,9 @@ function renderTeacher(){
   $("distAll").onclick=function(){ var n=+$("distAllN").value; if(!(n>=1))return alert("장수를 1 이상으로."); doDistribute("all",n); };
   $("tResetCards").onclick=doResetCards;
   $("tDelete").onclick=doDeleteGame;
+  Array.prototype.forEach.call(s.querySelectorAll("[data-acc]"),function(b){ b.onclick=function(){ acceptTrade(b.dataset.acc); }; });
+  Array.prototype.forEach.call(s.querySelectorAll("[data-dec]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.dec,"declined"); }; });
+  Array.prototype.forEach.call(s.querySelectorAll("[data-redeem]"),function(b){ b.onclick=function(){ doRedeemGroup(+b.dataset.redeem); }; });
   if(settingsOpen) wireSettings();
 }
 
@@ -477,7 +489,11 @@ function settingsPanelHTML(){
   var wCells=ALL.map(function(k){ var isNum=NUMS.indexOf(k)>=0;
     return '<div class="wcell '+(isNum?"isnum":"isop")+'"><span class="wg">'+esc(k)+'</span><input type="number" min="0" step="1" data-card="'+esc(k)+'" value="'+(game.weights[k]!=null?game.weights[k]:1)+'" inputmode="numeric"></div>';
   }).join("");
-  return '<div class="settings open"><div class="settings-grid">'+
+  return '<div class="settings open">'+
+    '<div class="block-label" style="margin-top:0">힌트 설정</div>'+
+    '<button class="btn '+(game.hintsEnabled?"ore":"ghost")+' slim" id="toggleHints">힌트 주기: '+(game.hintsEnabled?"켜짐 (계산 값을 보여줘요)":"꺼짐 (틀렸다고만 알려줘요)")+'</button>'+
+    '<p class="hint">"수식으로 자원 만들기"에서 계산이 틀렸을 때 학생에게 실제 계산 값을 보여줄지 정해요. 누르면 모든 태블릿에 바로 반영돼요.</p>'+
+    '<div class="settings-grid">'+
     '<div><div class="block-label">자원 목록 편집 <span style="font-weight:600;color:var(--muted)">· 목표 숫자는 서로 달라야 해요</span></div>'+
       '<div id="resEditor">'+resRows+'</div>'+
       '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'+
@@ -491,6 +507,9 @@ function settingsPanelHTML(){
     '<div class="save-row"><button class="btn" id="saveSettings">설정 저장</button><button class="btn ghost" id="cancelSettings">닫기</button></div></div>';
 }
 function wireSettings(){
+  $("toggleHints").onclick=function(){
+    gameRef().update({hintsEnabled:!game.hintsEnabled}).catch(function(){ alert("힌트 설정 변경에 실패했어요."); });
+  };
   Array.prototype.forEach.call($("resEditor").querySelectorAll(".del"),function(b){ b.onclick=function(){ b.closest(".res-edit-row").remove(); }; });
   $("addRes").onclick=function(){
     var div=document.createElement("div"); div.className="res-edit-row"; div.dataset.id="new"+Date.now()+Math.floor(Math.random()*1000);
@@ -655,7 +674,7 @@ function renderGroup(){
   });
 
   $("genBtn").onclick=doGenerate;
-  if($("redeemBtn")) $("redeemBtn").onclick=doRedeemAll;
+  if($("redeemBtn")) $("redeemBtn").onclick=function(){ doRedeemGroup(myIdx); };
   $("proposeBtn").onclick=openTradeModal;
   Array.prototype.forEach.call(s.querySelectorAll("[data-acc]"),function(b){ b.onclick=function(){ acceptTrade(b.dataset.acc); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-dec]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.dec,"declined"); }; });
@@ -675,7 +694,10 @@ function doGenerate(){
   var missingOps=["+","−","×","÷"].filter(function(op){ return !need[op]; });
   if(missingOps.length){ groupMsg={ok:false,text:"사칙연산을 모두 한 번씩은 써야 해요. 아직 안 쓴 연산: "+missingOps.join(" ")}; return renderGroup(); }
   var match=null; for(var i=0;i<game.resources.length;i++){ if(Math.abs(ev.value-game.resources[i].target)<1e-9){ match=game.resources[i]; break; } }
-  if(!match){ groupMsg={ok:false,text:"이 값과 일치하는 자원이 없어요."}; return renderGroup(); }
+  if(!match){
+    groupMsg={ok:false,text: game.hintsEnabled ? ("현재 계산 값은 "+pretty(ev.value)+"이에요. 다시 생각해보세요.") : "계산이 틀렸어요. 다시 생각해 보세요."};
+    return renderGroup();
+  }
 
   db.runTransaction(function(tx){
     return tx.get(gameRef()).then(function(snap){
@@ -691,15 +713,15 @@ function doGenerate(){
 }
 
 /* ---------------- 실물 카드 교환 ---------------- */
-function doRedeemAll(){
+function doRedeemGroup(idx){
   db.runTransaction(function(tx){
     return tx.get(gameRef()).then(function(snap){
-      var data=snap.data(), gg=data.groups[myIdx], red=gg.redeemed||{};
+      var data=snap.data(), gg=data.groups[idx], red=gg.redeemed||{};
       data.resources.forEach(function(r){ red[r.id]=(red[r.id]||0)+(gg.resources[r.id]||0); gg.resources[r.id]=0; });
       gg.redeemed=red;
       tx.update(gameRef(),{groups:data.groups});
     });
-  }).then(function(){ renderGroup(); }).catch(function(){ alert("교환 확인 처리에 실패했어요."); });
+  }).then(function(){ renderCurrent(); }).catch(function(){ alert("교환 확인 처리에 실패했어요."); });
 }
 
 /* ---------------- 교환 ---------------- */
@@ -761,13 +783,13 @@ function acceptTrade(id){
       tx.update(gameRef(),{groups:data.groups});
       tx.update(tRef,{status:"accepted"});
     }); });
-  }).then(function(){ tradeMsg={ok:true,text:"교환 완료! 카드가 서로 바뀌었어요."}; renderGroup(); })
+  }).then(function(){ tradeMsg={ok:true,text:"교환 완료! 카드가 서로 바뀌었어요."}; renderCurrent(); })
     .catch(function(e){ var m=String(e.message||e);
       if(m.indexOf("DONE")>=0) tradeMsg={ok:false,text:"이미 처리된 제안이에요."};
       else if(m.indexOf("FROM")>=0) tradeMsg={ok:false,text:"상대 모둠의 카드가 부족해 교환이 취소됐어요."};
       else if(m.indexOf("TO")>=0) tradeMsg={ok:false,text:"우리 모둠 카드가 부족해요."};
       else tradeMsg={ok:false,text:"교환 중 문제가 생겼어요. 다시 시도해 주세요."};
-      renderGroup(); });
+      renderCurrent(); });
 }
 function setTradeStatus(id,status){ gameRef().collection("trades").doc(id).update({status:status}).catch(function(){}); }
 
