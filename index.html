@@ -125,6 +125,7 @@
   .prod-chip{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;border:1.5px solid var(--line);}
   button.prod-chip{font-family:inherit;cursor:pointer;}
   .prod-chip.selected{outline:3px solid var(--ink);outline-offset:1px;}
+  .prod-chip.disabled{opacity:.35;cursor:not-allowed;}
   .prod-chip .cc{font-family:var(--mono);font-weight:800;}
   .prod-chip.pc1{background:var(--ok-soft);border-color:var(--ok);color:#1f8a4c;}
   .prod-chip.pc2{background:var(--num-soft);border-color:var(--num-line);color:#0e6b5c;}
@@ -137,6 +138,10 @@
   .recipe-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;}
   .recipe-row .rname{font-weight:700;font-size:13px;min-width:60px;}
   .recipe-row .del{background:var(--err-soft);color:var(--err);border:none;border-radius:7px;width:30px;height:30px;font-size:16px;font-weight:800;flex:none;}
+  .recipe-2col{display:grid;grid-template-columns:1fr;gap:0 24px;}
+  @media(min-width:860px){.recipe-2col{grid-template-columns:1fr 1fr;}}
+  .recipe-block{border-top:1.5px dashed var(--line);margin-top:14px;padding-top:14px;}
+  .trade-box{border:1.5px dashed var(--line);border-radius:12px;padding:14px;margin-top:12px;}
   .score-result{margin-top:14px;padding:14px;border-radius:12px;background:var(--ok-soft);color:var(--ok);font-weight:700;line-height:1.7;}
 
   /* ---- groups overview / cards ---- */
@@ -258,8 +263,8 @@ function defaultResources(){
 }
 function makeGroup(i,resources,products,scoreCategories){
   var res={},red={}; resources.forEach(function(r){ res[r.id]=0; red[r.id]=0; });
-  var prod={},prodRed={}; (products||defaultProducts()).forEach(function(p){ prod[p.id]=0; prodRed[p.id]=0; });
-  return {name:(i+1)+"모둠",cards:emptyCards(scoreCategories),resources:res,redeemed:red,products:prod,productsRedeemed:prodRed};
+  var prod={}; (products||defaultProducts()).forEach(function(p){ prod[p.id]=0; });
+  return {name:(i+1)+"모둠",cards:emptyCards(scoreCategories),resources:res,redeemed:red,products:prod};
 }
 function defaultProducts(){
   return [
@@ -516,6 +521,18 @@ function recipeText(prod){
   for(var pid in pr){ parts.push(prodNameById(pid)+" "+pr[pid]); }
   return parts.join(", ");
 }
+function recipeItemsList(prod){
+  var parts=[]; var res=(prod.recipe&&prod.recipe.res)||{}, pr=(prod.recipe&&prod.recipe.prod)||{};
+  for(var rid in res){ parts.push(resNameById(rid)+" "+res[rid]+"개"); }
+  for(var pid in pr){ parts.push(prodNameById(pid)+" "+pr[pid]+"개"); }
+  return parts.join(", ");
+}
+function canAffordProduct(g,prod){
+  var needRes=(prod.recipe&&prod.recipe.res)||{}, needProd=(prod.recipe&&prod.recipe.prod)||{};
+  for(var rid in needRes){ if((g.resources[rid]||0)<needRes[rid]) return false; }
+  for(var pid in needProd){ if(((g.products&&g.products[pid])||0)<needProd[pid]) return false; }
+  return true;
+}
 function productChipsHTML(countsObj){
   var products=game.products||defaultProducts();
   var h='<div class="prod-row">';
@@ -566,23 +583,29 @@ function renderTeacher(){
   if(scoreSettingsOpen) h+=scoreSettingsPanelHTML();
 
   // 진행 중 교환
-  var pend=trades.filter(function(t){return t.status==="pending";});
-  h+='<div class="panel"><div class="block-label">진행 중 교환 ('+pend.length+')</div>';
-  if(!pend.length) h+='<p class="hint" style="margin:0">아직 진행 중인 교환이 없어요.</p>';
-  else pend.forEach(function(t){
-    if(t.kind==="product"){
-      var pr=prodById(t.productId);
-      h+='<div class="offer"><div class="ohead">'+esc(t.fromName)+' → 생산품 제작 신청: '+esc(t.productName)+'</div>'+
-         (pr?'<div class="oline">필요 재료: '+esc(recipeText(pr))+'</div>':'')+
-         '<div class="oact"><button class="btn ore slim" data-paccept="'+esc(t.id)+'">수락</button>'+
-         '<button class="btn danger slim" data-dec="'+esc(t.id)+'">거절</button></div></div>';
-    } else {
-      h+='<div class="offer"><div class="ohead">'+esc(t.fromName)+' → '+esc(t.toName)+'</div>'+
-         '<div class="oline">주는 카드: '+miniCardsHTML(t.give)+'</div>'+
-         '<div class="oline">받고 싶은 카드: '+miniCardsHTML(t.want)+'</div>'+
-         '<div class="oact"><button class="btn ore slim" data-acc="'+esc(t.id)+'">수락</button>'+
-         '<button class="btn danger slim" data-dec="'+esc(t.id)+'">거절</button></div></div>';
-    }
+  var pendAll=trades.filter(function(t){return t.status==="pending";});
+  var pendCards=pendAll.filter(function(t){return t.kind!=="product";});
+  var pendProducts=pendAll.filter(function(t){return t.kind==="product";});
+  h+='<div class="panel"><div class="block-label">진행 중 교환 ('+pendCards.length+')</div>';
+  if(!pendCards.length) h+='<p class="hint" style="margin:0">아직 진행 중인 교환이 없어요.</p>';
+  else pendCards.forEach(function(t){
+    h+='<div class="offer"><div class="ohead">'+esc(t.fromName)+' → '+esc(t.toName)+'</div>'+
+       '<div class="oline">주는 카드: '+miniCardsHTML(t.give)+'</div>'+
+       '<div class="oline">받고 싶은 카드: '+miniCardsHTML(t.want)+'</div>'+
+       '<div class="oact"><button class="btn ore slim" data-acc="'+esc(t.id)+'">수락</button>'+
+       '<button class="btn danger slim" data-dec="'+esc(t.id)+'">거절</button></div></div>';
+  });
+  h+='</div>';
+
+  // 생산품 교환 신청목록
+  h+='<div class="panel"><div class="block-label">생산품 교환 신청목록 ('+pendProducts.length+')</div>';
+  if(!pendProducts.length) h+='<p class="hint" style="margin:0">아직 들어온 생산품 신청이 없어요.</p>';
+  else pendProducts.forEach(function(t){
+    var pr=prodById(t.productId);
+    h+='<div class="offer"><div class="ohead">'+esc(t.fromName)+' → 생산품 제작 신청: '+esc(t.productName)+'</div>'+
+       (pr?'<div class="oline">필요 재료: '+esc(recipeText(pr))+'</div>':'')+
+       '<div class="oact"><button class="btn ore slim" data-paccept="'+esc(t.id)+'">수락</button>'+
+       '<button class="btn danger slim" data-dec="'+esc(t.id)+'">거절</button></div></div>';
   });
   h+='</div>';
 
@@ -591,8 +614,6 @@ function renderTeacher(){
   game.groups.forEach(function(g,i){
     var redeemedObj=g.redeemed||{};
     var pendingTotal=game.resources.reduce(function(sum,r){ return sum+(g.resources[r.id]||0); },0);
-    var prodRedeemedObj=g.productsRedeemed||{};
-    var prodPendingTotal=(game.products||defaultProducts()).reduce(function(sum,p){ return sum+((g.products&&g.products[p.id])||0); },0);
     h+='<div class="gcard"><div class="gtop"><span class="badge">'+(i+1)+'</span><span class="gn">'+esc(g.name)+'</span></div>'+
        '<div class="gbody"><p class="mini-label">보유 카드</p>'+cardsGridHTML(g.cards)+
        '<p class="mini-label" style="margin-top:12px">보유 카드(점수용)</p>'+scoreCardChipsHTML(g.cards)+
@@ -602,12 +623,7 @@ function renderTeacher(){
          (pendingTotal>0?'<button class="btn ore slim" data-redeem="'+i+'">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
        '</div>'+
        resChipsHTML(redeemedObj)+
-       '<p class="mini-label" style="margin-top:12px">생성한 생산품</p>'+productChipsHTML(g.products)+
-       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px">'+
-         '<p class="mini-label" style="margin:0">실물 카드 교환 완료(생산품)</p>'+
-         (prodPendingTotal>0?'<button class="btn ore slim" data-redeemprod="'+i+'">교환 확인 · 대기 '+prodPendingTotal+'개</button>':'')+
-       '</div>'+
-       productChipsHTML(prodRedeemedObj)+
+       '<p class="mini-label" style="margin-top:12px">생산품 카드 생성</p>'+productChipsHTML(g.products)+
        '</div></div>';
   });
   h+='</div>';
@@ -626,7 +642,6 @@ function renderTeacher(){
   Array.prototype.forEach.call(s.querySelectorAll("[data-paccept]"),function(b){ b.onclick=function(){ acceptProductRequest(b.dataset.paccept); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-dec]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.dec,"declined"); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-redeem]"),function(b){ b.onclick=function(){ doRedeemGroup(+b.dataset.redeem); }; });
-  Array.prototype.forEach.call(s.querySelectorAll("[data-redeemprod]"),function(b){ b.onclick=function(){ doRedeemProducts(+b.dataset.redeemprod); }; });
   if(settingsOpen) wireSettings();
   if(recipeSettingsOpen) wireRecipeSettings();
   if(scoreSettingsOpen) wireScoreSettings();
@@ -661,11 +676,14 @@ function scoreSettingsPanelHTML(){
       '<div class="field"><label>장수</label><input class="num-in" id="scGiveN" type="number" min="1" value="1" inputmode="numeric"></div>'+
       '<button class="btn" id="scGiveBtn">지급</button>'+
     '</div>'+
-    '<div class="block-label" style="margin-top:18px">모둠별 점수 계산 결과</div>'+
+    '<div class="block-label" style="margin-top:18px">모둠별 점수 계산 결과 <span style="font-weight:600;color:var(--muted)">· 보유 카드 기준 실시간 반영</span></div>'+
     game.groups.map(function(g){
-      if(!g.scoreCounts) return '<p class="score-summary" style="color:var(--muted);font-weight:600">'+esc(g.name)+': 입력 중</p>';
-      var r=computeScore(cats,g.scoreCounts);
-      return '<p class="score-summary">'+esc(g.name)+': 기본 점수 '+r.base+'점 + 보너스 '+r.bonus+'점 − 벌칙 '+r.penalty+'점 = 총 '+r.total+'점</p>';
+      var live=computeScore(cats,g.cards||{});
+      if(g.scoreCounts && !scoreCountsMatchCards(g.scoreCounts,g.cards,cats)){
+        var declared=computeScore(cats,g.scoreCounts);
+        return '<p class="score-summary" style="color:var(--err)">'+esc(g.name)+': (모둠에서 수정함) 제출 점수 '+declared.total+'점 / 원래 점수 '+live.total+'점</p>';
+      }
+      return '<p class="score-summary">'+esc(g.name)+': 기본 점수 '+live.base+'점 + 보너스 '+live.bonus+'점 − 벌칙 '+live.penalty+'점 = 총 '+live.total+'점</p>';
     }).join("")+
     '</div>';
 }
@@ -715,9 +733,10 @@ function recipeRowsHTML(prod){
 function recipeSettingsPanelHTML(){
   var products=game.products||defaultProducts();
   var h='<div class="panel"><div class="block-label" style="margin-top:0">생산품 교환 조건(재료) 설정</div>'+
-    '<p class="hint" style="margin-top:0">각 생산품을 만들 때 필요한 자원·생산품 재료를 자유롭게 바꿀 수 있어요.</p>';
+    '<p class="hint" style="margin-top:0">각 생산품을 만들 때 필요한 자원·생산품 재료를 자유롭게 바꿀 수 있어요.</p>'+
+    '<div class="recipe-2col">';
   products.forEach(function(p){
-    h+='<div style="border-top:1.5px dashed var(--line);margin-top:14px;padding-top:14px">'+
+    h+='<div class="recipe-block">'+
        '<div class="block-label" style="margin-top:0">'+esc(p.name)+'</div>'+
        '<div class="recipe-rows" data-pid="'+esc(p.id)+'">'+recipeRowsHTML(p)+'</div>'+
        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px">'+
@@ -726,7 +745,8 @@ function recipeSettingsPanelHTML(){
          '<button class="btn ghost slim recipe-add-btn" type="button" data-pid="'+esc(p.id)+'">+ 재료 추가</button>'+
        '</div></div>';
   });
-  h+='<div class="save-row"><button class="btn" id="saveRecipeSettings">설정 저장</button><button class="btn ghost" id="cancelRecipeSettings">닫기</button></div>'+
+  h+='</div>'+
+    '<div class="save-row"><button class="btn" id="saveRecipeSettings">설정 저장</button><button class="btn ghost" id="cancelRecipeSettings">닫기</button></div>'+
     '<div class="warn" id="recipeWarn"></div>'+
     '</div>';
   return h;
@@ -868,7 +888,7 @@ function doResetCards(){
       data.groups.forEach(function(g){
         g.cards=emptyCards(data.scoreCategories||defaultScoreCategories());
         var res={},red={}; data.resources.forEach(function(r){res[r.id]=0; red[r.id]=0;}); g.resources=res; g.redeemed=red;
-        var prod={},prodRed={}; (data.products||defaultProducts()).forEach(function(p){ prod[p.id]=0; prodRed[p.id]=0; }); g.products=prod; g.productsRedeemed=prodRed;
+        var prod={}; (data.products||defaultProducts()).forEach(function(p){ prod[p.id]=0; }); g.products=prod;
       });
       tx.update(gameRef(),{groups:data.groups});
     });
@@ -892,27 +912,18 @@ function renderGroup(){
 
   var redeemedObj=g.redeemed||{};
   var pendingTotal=game.resources.reduce(function(sum,r){ return sum+(g.resources[r.id]||0); },0);
-  var prodRedeemedObj=g.productsRedeemed||{};
-  var prodPendingTotal=(game.products||defaultProducts()).reduce(function(sum,p){ return sum+((g.products&&g.products[p.id])||0); },0);
 
   h+='<div class="group-grid">';
 
-  // 내 카드 + 자원 + 실물 카드 교환
+  // 내 카드 + 자원 + 실물 카드 교환 + 생산품 카드 생성
   h+='<div class="panel"><div class="block-label" style="justify-content:space-between"><span>우리 모둠 카드</span></div>'+cardsGridHTML(g.cards)+
-     '<p class="mini-label" style="margin-top:14px">보유 카드(점수용)</p>'+scoreCardChipsHTML(g.cards)+
      '<p class="mini-label" style="margin-top:14px">생성한 자원</p>'+resChipsHTML(g.resources)+
      '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">'+
        '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
        (pendingTotal>0?'<button class="btn ore slim" id="redeemBtn">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
      '</div>'+
      resChipsHTML(redeemedObj)+
-     '<p class="mini-label" style="margin-top:16px">생산품 카드 생성</p>'+productCatalogHTML()+
-     '<p class="mini-label" style="margin-top:10px">생성한 생산품</p>'+productChipsHTML(g.products)+
-     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px">'+
-       '<p class="mini-label" style="margin:0">실물 카드 교환 완료(생산품)</p>'+
-       (prodPendingTotal>0?'<button class="btn ore slim" id="redeemProdBtn">교환 확인 · 대기 '+prodPendingTotal+'개</button>':'')+
-     '</div>'+
-     productChipsHTML(prodRedeemedObj)+
+     '<p class="mini-label" style="margin-top:16px">생산품 카드 생성</p>'+productChipsHTML(g.products)+
      '</div>';
 
   // 수식으로 자원 만들기
@@ -931,7 +942,10 @@ function renderGroup(){
   var outgoing=trades.filter(function(t){return t.status==="pending"&&t.from===myIdx;});
   h+='<div class="panel"><div class="block-label" style="justify-content:space-between"><span>카드 교환(무역)</span></div>'+
      '<button class="btn trade" id="proposeBtn">다른 모둠에 교환 제안하기</button>'+
-     '<button class="btn ore" id="proposeProductBtn" style="margin-top:8px">생산품으로 교환하기</button>'+
+     '<div class="trade-box"><div class="block-label" style="margin-top:0">무역센터에서 생산품으로 교환하기</div>'+
+       '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
+       '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button>'+
+     '</div>'+
      (tradeMsg?'<div class="msg '+(tradeMsg.ok?"ok":"bad")+'" style="margin-top:12px">'+esc(tradeMsg.text)+'</div>':'');
 
   h+='<p class="mini-label" style="margin-top:16px">받은 제안 ('+incoming.length+')</p>';
@@ -990,7 +1004,6 @@ function renderGroup(){
 
   $("genBtn").onclick=doGenerate;
   if($("redeemBtn")) $("redeemBtn").onclick=function(){ doRedeemGroup(myIdx); };
-  if($("redeemProdBtn")) $("redeemProdBtn").onclick=function(){ doRedeemProducts(myIdx); };
   $("proposeBtn").onclick=openTradeModal;
   $("proposeProductBtn").onclick=openProductRequestModal;
   if($("scoreBtn")) $("scoreBtn").onclick=openScoreModal;
@@ -1041,16 +1054,6 @@ function doRedeemGroup(idx){
     });
   }).then(function(){ renderCurrent(); }).catch(function(){ alert("교환 확인 처리에 실패했어요."); });
 }
-function doRedeemProducts(idx){
-  db.runTransaction(function(tx){
-    return tx.get(gameRef()).then(function(snap){
-      var data=snap.data(), gg=data.groups[idx], red=gg.productsRedeemed||{};
-      (data.products||defaultProducts()).forEach(function(p){ red[p.id]=(red[p.id]||0)+((gg.products&&gg.products[p.id])||0); if(gg.products) gg.products[p.id]=0; });
-      gg.productsRedeemed=red;
-      tx.update(gameRef(),{groups:data.groups});
-    });
-  }).then(function(){ renderCurrent(); }).catch(function(){ alert("교환 확인 처리에 실패했어요."); });
-}
 
 /* ---------------- 점수 계산 ---------------- */
 function computeScore(cats,counts){
@@ -1070,10 +1073,16 @@ function computeScore(cats,counts){
   });
   return {base:base,bonus:bonus,penalty:penalty,total:base+bonus-penalty,catDetails:catDetails};
 }
+function scoreCountsMatchCards(counts,cardsObj,cats){
+  var match=true;
+  cats.forEach(function(cat){ cat.items.forEach(function(it){ if((counts[it.id]||0)!==((cardsObj&&cardsObj[it.id])||0)) match=false; }); });
+  return match;
+}
 function openScoreModal(){
   var cats=game.scoreCategories||defaultScoreCategories();
-  var counts={}, savedCounts=(game.groups[myIdx]&&game.groups[myIdx].scoreCounts)||{};
-  for(var scId in savedCounts){ counts[scId]=savedCounts[scId]; }
+  var g=game.groups[myIdx];
+  var counts={};
+  cats.forEach(function(cat){ cat.items.forEach(function(it){ counts[it.id]=g.cards[it.id]||0; }); });
   var ov=document.createElement("div"); ov.className="overlay";
   function draw(resultHTML){
     var rowsHTML=cats.map(function(cat,ci){
@@ -1084,7 +1093,7 @@ function openScoreModal(){
       }).join("");
       return '<div class="score-row">'+cellsHTML+'</div>';
     }).join("");
-    ov.innerHTML='<div class="modal"><h3>점수 계산</h3><p class="sub2">가지고 있는 카드 개수를 정하고 계산하기를 눌러주세요.</p>'+
+    ov.innerHTML='<div class="modal"><h3>점수 계산</h3><p class="sub2">가지고 있는 카드 개수가 자동으로 채워져 있어요. 다르면 직접 조정한 뒤 계산하기를 눌러주세요.</p>'+
       rowsHTML+
       '<div class="foot"><button class="btn ore" id="scCalc">계산하기</button><button class="btn ghost" id="scClose">닫기</button></div>'+
       (resultHTML||'')+
@@ -1113,23 +1122,30 @@ function openProductRequestModal(){
   var selected=null;
   var ov=document.createElement("div"); ov.className="overlay";
   function draw(){
+    var g=game.groups[myIdx];
     function rowHTML(list){ return '<div class="prod-row">'+list.map(function(p){
-      return '<button type="button" class="prod-chip '+prodCatClass(p.category)+(selected===p.id?" selected":"")+'" data-pick="'+esc(p.id)+'" title="재료: '+esc(recipeText(p))+'">'+esc(p.name)+'</button>';
+      var afford=canAffordProduct(g,p);
+      return '<button type="button" class="prod-chip '+prodCatClass(p.category)+(selected===p.id?" selected":"")+(afford?"":" disabled")+'" '+(afford?"":"disabled")+' data-pick="'+esc(p.id)+'" title="재료: '+esc(recipeText(p))+(afford?"":" (재료 부족)")+'">'+esc(p.name)+'</button>';
     }).join("")+'</div>'; }
     var selInfo=selected?('<p class="hint" style="margin-top:10px">필요한 재료: <b>'+esc(recipeText(prodById(selected)))+'</b></p>'):'';
-    ov.innerHTML='<div class="modal"><h3>생산품으로 교환하기</h3><p class="sub2">원하는 생산품을 하나 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
+    ov.innerHTML='<div class="modal"><h3>생산품으로 교환하기</h3><p class="sub2">원하는 생산품을 하나 골라 신청하면 선생님이 확인 후 승인해요. 재료가 부족한 생산품은 고를 수 없어요.</p>'+
       rowHTML(products.slice(0,7))+rowHTML(products.slice(7,14))+selInfo+
       '<div class="foot"><button class="btn ore" id="prReqSend">신청</button><button class="btn ghost" id="prReqClose">닫기</button></div></div>';
-    Array.prototype.forEach.call(ov.querySelectorAll("[data-pick]"),function(b){ b.onclick=function(){ selected=b.getAttribute("data-pick"); draw(); }; });
+    Array.prototype.forEach.call(ov.querySelectorAll("[data-pick]:not([disabled])"),function(b){ b.onclick=function(){ selected=b.getAttribute("data-pick"); draw(); }; });
     $("prReqClose").onclick=function(){ document.body.removeChild(ov); };
     $("prReqSend").onclick=function(){
       if(!selected){ alert("생산품을 하나 골라 주세요."); return; }
       var p=prodById(selected);
+      var latestG=game.groups[myIdx];
+      if(!canAffordProduct(latestG,p)){ alert("재료가 부족해서 신청할 수 없어요. 필요한 재료: "+recipeText(p)); draw(); return; }
       gameRef().collection("trades").add({
         kind:"product", from:myIdx, fromName:game.groups[myIdx].name,
         productId:selected, productName:p.name, status:"pending", createdAt:Date.now()
-      }).then(function(){ if(ov.parentNode) document.body.removeChild(ov); tradeMsg={ok:true,text:"생산품 신청을 보냈어요. 선생님 확인을 기다려요."}; renderGroup(); })
-        .catch(function(){ alert("신청 전송에 실패했어요."); });
+      }).then(function(){
+        if(ov.parentNode) document.body.removeChild(ov);
+        tradeMsg={ok:true,text:p.name+" 교환 신청을 보냈어요. 무역센터에 "+recipeItemsList(p)+"를 제출하고 확인을 받으세요. 교환한 실물 카드도 꼭 받으세요!"};
+        renderGroup();
+      }).catch(function(){ alert("신청 전송에 실패했어요."); });
     };
   }
   document.body.appendChild(ov); draw();
