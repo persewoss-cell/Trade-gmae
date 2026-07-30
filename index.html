@@ -979,12 +979,12 @@ function renderGroup(){
   h+='</div>';
 
   h+='<div class="panel"><div class="block-label">무역센터에서 생산품으로 교환하기</div>'+
-     '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
+     '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 무역 센터에서 확인 후 승인해요.</p>'+
      '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button>'+
      (productMsg?'<div class="msg '+(productMsg.ok?"ok":"bad")+'" style="margin-top:12px">'+esc(productMsg.text)+'</div>':'')+
      '<p class="mini-label" style="margin-top:16px">내 신청 현황 ('+outgoingProducts.length+')</p>'+
      (outgoingProducts.length?outgoingProducts.map(function(t){
-       return '<div class="offer"><div class="ohead">선생님에게 → '+esc(t.productName)+' 신청</div>'+
+       return '<div class="offer"><div class="ohead">무역센터에게 → '+esc(t.productName)+' 신청</div>'+
          '<div class="oact"><button class="btn ghost slim" data-cancel="'+esc(t.id)+'">신청 취소</button></div></div>';
      }).join(""):'<p class="hint" style="margin:0">신청한 생산품이 없어요.</p>')+
      '</div>';
@@ -1161,7 +1161,7 @@ function openProductRequestModal(){
       return '<button type="button" class="prod-chip '+catClassByName(p.name)+(selected===p.id?" selected":"")+(afford?"":" disabled")+'" '+(afford?"":"disabled")+' data-pick="'+esc(p.id)+'" title="재료: '+esc(recipeText(p))+(afford?"":" (재료 부족)")+'">'+esc(p.name)+'</button>';
     }).join("")+'</div>'; }
     var selInfo=selected?('<p class="hint" style="margin-top:10px">필요한 재료: <b>'+esc(recipeText(prodById(selected)))+'</b></p>'):'';
-    ov.innerHTML='<div class="modal"><h3>생산품으로 교환하기</h3><p class="sub2">원하는 생산품을 하나 골라 신청하면 선생님이 확인 후 승인해요. 재료가 부족한 생산품은 고를 수 없어요.</p>'+
+    ov.innerHTML='<div class="modal"><h3>생산품으로 교환하기</h3><p class="sub2">원하는 생산품을 하나 골라 신청하면 무역센터에서 확인 후 승인해요. 재료가 부족한 생산품은 고를 수 없어요.</p>'+
       rowHTML(products.slice(0,7))+rowHTML(products.slice(7,14))+selInfo+
       '<div class="foot"><button class="btn ore" id="prReqSend">신청</button><button class="btn ghost" id="prReqClose">닫기</button></div></div>';
     Array.prototype.forEach.call(ov.querySelectorAll("[data-pick]:not([disabled])"),function(b){ b.onclick=function(){ selected=b.getAttribute("data-pick"); draw(); }; });
@@ -1176,7 +1176,7 @@ function openProductRequestModal(){
         productId:selected, productName:p.name, status:"pending", createdAt:Date.now()
       }).then(function(){
         if(ov.parentNode) document.body.removeChild(ov);
-        productMsg={ok:true,text:p.name+" 교환 신청을 보냈어요. 선생님이 확인 후 승인하면 "+p.name+" 카드가 만들어져요."};
+        productMsg={ok:true,text:p.name+" 교환 신청을 보냈어요. 무역센터에서 확인 후 승인하면 "+p.name+" 카드가 만들어져요."};
         renderGroup();
       }).catch(function(){ alert("신청 전송에 실패했어요."); });
     };
@@ -1270,8 +1270,8 @@ function acceptTrade(id){
   }).then(function(){ tradeMsg={ok:true,text:t.fromName+" ↔ "+t.toName+" 교환 완료! 카드가 서로 바뀌었어요."}; renderCurrent(); })
     .catch(function(e){ var m=String(e.message||e);
       if(m.indexOf("DONE")>=0) tradeMsg={ok:false,text:"이미 처리된 제안이에요."};
-      else if(m.indexOf("FROM")>=0) tradeMsg={ok:false,text:t.fromName+"의 카드가 부족해서 교환이 취소됐어요."};
-      else if(m.indexOf("TO")>=0) tradeMsg={ok:false,text:t.toName+"의 카드가 부족해서 교환이 취소됐어요."};
+      else if(m.indexOf("FROM")>=0) tradeMsg={ok:false,text:t.fromName+"의 카드가 부족해서 교환할 수 없어요."};
+      else if(m.indexOf("TO")>=0) tradeMsg={ok:false,text:t.toName+"의 카드가 부족해서 교환할 수 없어요."};
       else tradeMsg={ok:false,text:"교환 중 문제가 생겼어요. 다시 시도해 주세요."};
       renderCurrent(); });
 }
