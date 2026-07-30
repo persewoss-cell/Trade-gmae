@@ -339,7 +339,7 @@ var db=null, ready=false;
 var role=null, code=null, myIdx=null;   // 이 기기의 정체성
 var game=null, trades=[];               // 실시간 스냅샷
 var unsubGame=null, unsubTrades=null;
-var formula="", groupMsg=null, tradeMsg=null, settingsOpen=false, scoreSettingsOpen=false, recipeSettingsOpen=false, connected=false;
+var formula="", groupMsg=null, tradeMsg=null, productMsg=null, settingsOpen=false, scoreSettingsOpen=false, recipeSettingsOpen=false, connected=false;
 var SESSION_KEY="trade-online-session";
 
 var $=function(id){ return document.getElementById(id); };
@@ -379,7 +379,7 @@ function subscribe(){
   }, function(){});
   saveSession();
 }
-function leave(){ if(unsubGame) unsubGame(); if(unsubTrades) unsubTrades(); unsubGame=unsubTrades=null; role=code=myIdx=null; game=null; trades=[]; formula=""; groupMsg=tradeMsg=null; clearSession(); renderLanding(); }
+function leave(){ if(unsubGame) unsubGame(); if(unsubTrades) unsubTrades(); unsubGame=unsubTrades=null; role=code=myIdx=null; game=null; trades=[]; formula=""; groupMsg=tradeMsg=productMsg=null; clearSession(); renderLanding(); }
 
 /* ---------------- 랜딩 ---------------- */
 function genCode(){ var s=""; for(var i=0;i<4;i++) s+=Math.floor(Math.random()*10); return s; }
@@ -513,18 +513,6 @@ function isProductId(k,prodList){
   var list=prodList||(game&&game.products)||[]; var found=false;
   list.forEach(function(p){ if(p.id===k) found=true; });
   return found;
-}
-function scoreCardChipsHTML(cardsObj){
-  var cats=game.scoreCategories||defaultScoreCategories();
-  var h='';
-  cats.forEach(function(cat,ci){
-    h+='<div class="prod-row">';
-    cat.items.forEach(function(it){ var n=(cardsObj&&cardsObj[it.id])||0;
-      h+='<span class="prod-chip sc'+((ci%4)+1)+'">'+esc(it.name)+'<span class="cc">'+n+'</span></span>';
-    });
-    h+='</div>';
-  });
-  return h;
 }
 function resNameById(rid){ var f=null; (game.resources||[]).forEach(function(r){ if(r.id===rid) f=r; }); return f?f.name:rid; }
 function prodById(pid){ var f=null; (game.products||defaultProducts()).forEach(function(p){ if(p.id===pid) f=p; }); return f; }
@@ -691,19 +679,11 @@ function scoreSettingsPanelHTML(){
     '<div class="block-label" style="margin-top:18px">카드별 점수 설정</div>'+
     '<div id="scoreEditor">'+scoreCardsEditorHTML(cats)+'</div>'+
     '<div class="save-row"><button class="btn" id="saveScoreSettings">설정 저장</button><button class="btn ghost" id="cancelScoreSettings">닫기</button></div>'+
-    '<div class="block-label" style="margin-top:18px">카드 지급 <span style="font-weight:600;color:var(--muted)">· 모둠에 점수용 카드를 직접 지급해요(다른 모둠과 교환도 가능해요)</span></div>'+
-    '<div class="ctl-row">'+
-      '<div class="field"><label>모둠</label><select class="num-in" id="scGiveGroup">'+
-        game.groups.map(function(gr,i){return '<option value="'+i+'">'+esc(gr.name)+'</option>';}).join("")+'</select></div>'+
-      '<div class="field"><label>카드</label><select class="num-in" id="scGiveCard">'+
-        cats.map(function(cat){ return cat.items.map(function(it){ return '<option value="'+esc(it.id)+'">'+esc(it.name)+'</option>'; }).join(""); }).join("")+'</select></div>'+
-      '<div class="field"><label>장수</label><input class="num-in" id="scGiveN" type="number" min="1" value="1" inputmode="numeric"></div>'+
-      '<button class="btn" id="scGiveBtn">지급</button>'+
-    '</div>'+
-    '<div class="block-label" style="margin-top:18px">모둠별 점수 계산 결과 <span style="font-weight:600;color:var(--muted)">· 보유 카드 기준 실시간 반영</span></div>'+
+    '<div class="block-label" style="margin-top:18px">모둠별 점수 계산 결과 <span style="font-weight:600;color:var(--muted)">· 실물 카드 교환 완료·생산품 카드 갯수 기준 실시간 반영</span></div>'+
     game.groups.map(function(g){
-      var live=computeScore(cats,g.cards||{});
-      if(g.scoreCounts && !scoreCountsMatchCards(g.scoreCounts,g.cards,cats)){
+      var liveCounts=liveScoreCounts(g);
+      var live=computeScore(cats,liveCounts);
+      if(g.scoreCounts && !scoreCountsMatchCards(g.scoreCounts,liveCounts,cats)){
         var declared=computeScore(cats,g.scoreCounts);
         return '<p class="score-summary" style="color:var(--err)">'+esc(g.name)+': (모둠에서 수정함) 제출 점수 '+declared.total+'점 / 원래 점수 '+live.total+'점</p>';
       }
@@ -717,17 +697,6 @@ function wireScoreSettings(){
   };
   $("cancelScoreSettings").onclick=function(){ scoreSettingsOpen=false; renderTeacher(); };
   $("saveScoreSettings").onclick=saveScoreSettings;
-  $("scGiveBtn").onclick=function(){
-    var gi=+$("scGiveGroup").value, cid=$("scGiveCard").value, n=+$("scGiveN").value;
-    if(!(n>=1)) return alert("장수를 1 이상으로 입력해 주세요.");
-    db.runTransaction(function(tx){
-      return tx.get(gameRef()).then(function(snap){
-        var data=snap.data();
-        data.groups[gi].cards[cid]=(data.groups[gi].cards[cid]||0)+n;
-        tx.update(gameRef(),{groups:data.groups});
-      });
-    }).then(function(){ renderTeacher(); }).catch(function(){ alert("카드 지급에 실패했어요."); });
-  };
 }
 function saveScoreSettings(){
   var cats=game.scoreCategories||defaultScoreCategories();
@@ -992,6 +961,7 @@ function renderGroup(){
   h+='<div class="panel"><div class="block-label">무역센터에서 생산품으로 교환하기</div>'+
      '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
      '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button>'+
+     (productMsg?'<div class="msg '+(productMsg.ok?"ok":"bad")+'" style="margin-top:12px">'+esc(productMsg.text)+'</div>':'')+
      '<p class="mini-label" style="margin-top:16px">내 신청 현황 ('+outgoingProducts.length+')</p>'+
      (outgoingProducts.length?outgoingProducts.map(function(t){
        return '<div class="offer"><div class="ohead">선생님에게 → '+esc(t.productName)+' 신청</div>'+
@@ -1083,6 +1053,23 @@ function doRedeemGroup(idx){
 }
 
 /* ---------------- 점수 계산 ---------------- */
+function liveScoreCounts(g){
+  var cats=game.scoreCategories||defaultScoreCategories();
+  var counts={};
+  cats.forEach(function(cat){
+    cat.items.forEach(function(it){
+      var n=0, r=null, p=null;
+      game.resources.forEach(function(rr){ if(rr.name===it.name) r=rr; });
+      if(r){ n=(g.redeemed&&g.redeemed[r.id])||0; }
+      else{
+        (game.products||defaultProducts()).forEach(function(pp){ if(pp.name===it.name) p=pp; });
+        if(p) n=(g.products&&g.products[p.id])||0;
+      }
+      counts[it.id]=n;
+    });
+  });
+  return counts;
+}
 function computeScore(cats,counts){
   var base=0,bonus=0,penalty=0,catDetails=[];
   cats.forEach(function(cat){
@@ -1108,8 +1095,7 @@ function scoreCountsMatchCards(counts,cardsObj,cats){
 function openScoreModal(){
   var cats=game.scoreCategories||defaultScoreCategories();
   var g=game.groups[myIdx];
-  var counts={};
-  cats.forEach(function(cat){ cat.items.forEach(function(it){ counts[it.id]=g.cards[it.id]||0; }); });
+  var counts=liveScoreCounts(g);
   var ov=document.createElement("div"); ov.className="overlay";
   function draw(resultHTML){
     var rowsHTML=cats.map(function(cat,ci){
@@ -1170,7 +1156,7 @@ function openProductRequestModal(){
         productId:selected, productName:p.name, status:"pending", createdAt:Date.now()
       }).then(function(){
         if(ov.parentNode) document.body.removeChild(ov);
-        tradeMsg={ok:true,text:p.name+" 교환 신청을 보냈어요. 선생님이 확인 후 승인하면 "+p.name+" 카드가 만들어져요."};
+        productMsg={ok:true,text:p.name+" 교환 신청을 보냈어요. 선생님이 확인 후 승인하면 "+p.name+" 카드가 만들어져요."};
         renderGroup();
       }).catch(function(){ alert("신청 전송에 실패했어요."); });
     };
@@ -1187,8 +1173,8 @@ function openTradeModal(){
   if(toIdx===null){ alert("교환할 다른 모둠이 없어요."); return; }
 
   var ov=document.createElement("div"); ov.className="overlay";
-  var WANT_KEYS=ALL.concat(allScoreCardItems().map(function(it){return it.id;}));
-  var GIVE_KEYS=WANT_KEYS.concat(game.resources.map(function(r){return r.id;})).concat((game.products||defaultProducts()).map(function(p){return p.id;}));
+  var TRADE_KEYS=ALL.concat(game.resources.map(function(r){return r.id;})).concat((game.products||defaultProducts()).map(function(p){return p.id;}));
+  var WANT_KEYS=TRADE_KEYS, GIVE_KEYS=TRADE_KEYS;
   function ownedCount(k){
     if(isResourceId(k)) return (g.redeemed&&g.redeemed[k])||0;
     if(isProductId(k)) return (g.products&&g.products[k])||0;
