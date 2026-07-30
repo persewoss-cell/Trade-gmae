@@ -308,7 +308,7 @@ function defaultGameData(groupCount){
   var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
   var resources=defaultResources(); var products=defaultProducts(); var scoreCategories=defaultScoreCategories();
   var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources,products,scoreCategories));
-  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreCategories:scoreCategories,products:products};
+  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreEditEnabled:true,scoreCategories:scoreCategories,products:products};
 }
 
 function normalize(str){
@@ -721,18 +721,25 @@ function scoreSettingsPanelHTML(){
       var live=computeScore(cats,liveCounts);
       if(g.scoreCounts && !scoreCountsMatchCards(g.scoreCounts,liveCounts,cats)){
         var declared=computeScore(cats,g.scoreCounts);
-        return '<p class="score-summary" style="color:var(--err)">'+esc(g.name)+': (모둠에서 수정함) 제출 점수 '+declared.total+'점 / 원래 점수 '+live.total+'점</p>';
+        return '<p class="score-summary" style="color:var(--err)">'+esc(g.name)+': 기본 점수 '+live.base+'점 + 의식주보너스 '+live.lifeBonus+'점 + 영역보너스 '+live.bonus+'점 − 영역벌점 '+live.penalty+'점 = 총 '+live.total+'점(모둠에서 수정함, 점수 '+declared.total+'점)</p>';
       }
       return '<p class="score-summary">'+esc(g.name)+': 기본 점수 '+live.base+'점 + 의식주보너스 '+live.lifeBonus+'점 + 영역보너스 '+live.bonus+'점 − 영역벌점 '+live.penalty+'점 = 총 '+live.total+'점</p>';
     }).join("")+
+    '<div class="block-label" style="margin-top:18px">모둠 점수 수정 허용</div>'+
+    '<button class="btn '+(scoreEditAllowed()?"ore":"ghost")+' slim" id="toggleScoreEdit">모둠 점수 수정 허용 · 지금 '+(scoreEditAllowed()?"켜짐":"꺼짐")+'</button>'+
+    '<p class="hint">끄면 모둠 화면의 점수 계산 팝업에서 카드 개수를 직접 조정할 수 없고, 자동으로 채워진 값 그대로만 계산돼요.</p>'+
     '</div>';
 }
+function scoreEditAllowed(){ return game.scoreEditEnabled!==false; }
 function wireScoreSettings(){
   $("toggleScore").onclick=function(){
     gameRef().update({scoreEnabled:!game.scoreEnabled}).catch(function(){ alert("점수 계산 활성화 변경에 실패했어요."); });
   };
   $("cancelScoreSettings").onclick=function(){ scoreSettingsOpen=false; renderTeacher(); };
   $("saveScoreSettings").onclick=saveScoreSettings;
+  $("toggleScoreEdit").onclick=function(){
+    gameRef().update({scoreEditEnabled:!scoreEditAllowed()}).catch(function(){ alert("모둠 점수 수정 허용 변경에 실패했어요."); });
+  };
 }
 function saveScoreSettings(){
   var cats=game.scoreCategories||defaultScoreCategories();
@@ -1144,16 +1151,17 @@ function openScoreModal(){
   var g=game.groups[myIdx];
   var counts=liveScoreCounts(g);
   var ov=document.createElement("div"); ov.className="overlay";
+  var editAllowed=scoreEditAllowed();
   function draw(resultHTML){
     var rowsHTML=cats.map(function(cat,ci){
       var cellsHTML=cat.items.map(function(it){
         var v=counts[it.id]||0;
         return '<div class="score-cell c'+((ci%4)+1)+'"><span class="scn">'+esc(it.name)+'</span>'+
-          '<button type="button" data-sminus="'+esc(it.id)+'">−</button><span class="scc">'+v+'</span><button type="button" data-splus="'+esc(it.id)+'">＋</button></div>';
+          (editAllowed?'<button type="button" data-sminus="'+esc(it.id)+'">−</button>':'')+'<span class="scc">'+v+'</span>'+(editAllowed?'<button type="button" data-splus="'+esc(it.id)+'">＋</button>':'')+'</div>';
       }).join("");
       return '<div class="score-row">'+cellsHTML+'</div>';
     }).join("");
-    ov.innerHTML='<div class="modal"><h3>점수 계산</h3><p class="sub2">가지고 있는 카드 개수가 자동으로 채워져 있어요. 다르면 직접 조정한 뒤 계산하기를 눌러주세요.</p>'+
+    ov.innerHTML='<div class="modal"><h3>점수 계산</h3><p class="sub2">'+(editAllowed?"가지고 있는 카드 개수가 자동으로 채워져 있어요. 다르면 직접 조정한 뒤 계산하기를 눌러주세요.":"가지고 있는 카드 개수가 자동으로 채워져 있어요. 선생님이 직접 조정을 막아두어서 이 값 그대로 계산하기만 할 수 있어요.")+'</p>'+
       rowsHTML+
       '<div class="foot"><button class="btn ore" id="scCalc">계산하기</button><button class="btn ghost" id="scClose">닫기</button></div>'+
       (resultHTML||'')+
