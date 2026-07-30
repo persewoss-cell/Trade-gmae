@@ -163,6 +163,20 @@
   .tile.zero{opacity:.28;filter:grayscale(.5);} .tile.zero .cnt{background:#9aa7b6;}
   .mini-label{font-size:12px;font-weight:800;color:var(--muted);margin:0 0 7px;}
 
+  /* ---- teacher group-overview compact mode ---- */
+  .groups.compact .gcard .gtop{padding:6px 8px;}
+  .groups.compact .gcard .gtop .badge{width:20px;height:20px;font-size:11px;}
+  .groups.compact .gcard .gtop .gn{font-size:13px;}
+  .groups.compact .gcard .gbody{padding:8px;}
+  .groups.compact .mini-label{font-size:10px;margin:0 0 4px;}
+  .groups.compact .cards-grid{grid-template-columns:repeat(8,1fr);gap:3px;max-width:100%;}
+  .groups.compact .tile{font-size:10px;border-radius:6px;}
+  .groups.compact .tile .cnt{min-width:13px;height:13px;font-size:8px;top:-4px;right:-4px;}
+  .groups.compact .prod-row{gap:3px;margin-bottom:3px;}
+  .groups.compact .prod-chip{padding:2px 6px;font-size:10px;gap:3px;}
+  .groups.compact .prod-chip .cc{font-size:10px;}
+  .groups.compact .btn.slim{min-height:32px;padding:5px 9px;font-size:12px;}
+
   /* ---- group play ---- */
   .formula-in{width:100%;font-family:var(--mono);font-size:24px;font-weight:700;text-align:center;padding:12px;border:2px solid var(--line);border-radius:12px;letter-spacing:.06em;color:var(--ink);}
   .formula-in:focus{outline:none;border-color:var(--num);}
@@ -628,19 +642,19 @@ function renderTeacher(){
   h+='</div>';
 
   // 전체 모둠 개요
-  h+='<div class="block-label" style="margin:4px 2px 12px">모둠 현황</div><div class="groups">';
+  h+='<div class="block-label" style="margin:4px 2px 12px">모둠 현황</div><div class="groups compact">';
   game.groups.forEach(function(g,i){
     var redeemedObj=g.redeemed||{};
     var pendingTotal=game.resources.reduce(function(sum,r){ return sum+(g.resources[r.id]||0); },0);
     h+='<div class="gcard"><div class="gtop"><span class="badge">'+(i+1)+'</span><span class="gn">'+esc(g.name)+'</span></div>'+
        '<div class="gbody"><p class="mini-label">보유 카드</p>'+cardsGridHTML(g.cards)+
-       '<p class="mini-label" style="margin-top:12px">생성한 자원</p>'+resChipsHTML(g.resources)+
-       '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px">'+
+       '<p class="mini-label" style="margin-top:6px">생성한 자원</p>'+resChipsHTML(g.resources)+
+       '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">'+
          '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
          (pendingTotal>0?'<button class="btn ore slim" data-redeem="'+i+'">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
        '</div>'+
        resChipsHTML(redeemedObj)+
-       '<p class="mini-label" style="margin-top:12px">생산품 카드 생성</p>'+productChipsHTML(g.products)+
+       '<p class="mini-label" style="margin-top:6px">생산품 카드 생성</p>'+productChipsHTML(g.products)+
        '</div></div>';
   });
   h+='</div>';
