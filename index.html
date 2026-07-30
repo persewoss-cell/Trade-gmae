@@ -107,17 +107,18 @@
   .warn{color:var(--err);font-weight:700;font-size:14px;margin-top:8px;min-height:20px;}
 
   /* ---- score calculation ---- */
-  .score-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
-  .score-cell{display:flex;align-items:center;gap:6px;border-radius:10px;padding:7px 10px;border:1.5px solid var(--line);}
-  .score-cell .scn{font-weight:800;font-size:13px;white-space:nowrap;}
-  .score-cell input.scp{width:60px;text-align:center;font-family:var(--mono);font-weight:700;font-size:14px;padding:5px 4px;border:1.5px solid var(--line);border-radius:7px;}
+  .score-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+  .score-cell{display:flex;align-items:center;gap:5px;border-radius:10px;padding:6px 8px;border:1.5px solid var(--line);}
+  .score-cell .scn{font-weight:800;font-size:12px;white-space:nowrap;}
+  .score-cell input.scp{width:56px;text-align:center;font-family:var(--mono);font-weight:700;font-size:13px;padding:5px 4px;border:1.5px solid var(--line);border-radius:7px;}
   .score-cell .scu{font-size:11px;color:var(--muted);}
-  .score-cell button{width:26px;height:26px;border-radius:6px;border:1.5px solid rgba(0,0,0,.15);background:rgba(255,255,255,.65);font-weight:800;font-size:14px;line-height:1;flex:none;}
-  .score-cell .scc{font-family:var(--mono);font-weight:800;font-size:14px;min-width:20px;text-align:center;}
+  .score-cell button{width:24px;height:24px;border-radius:6px;border:1.5px solid rgba(0,0,0,.15);background:rgba(255,255,255,.65);font-weight:800;font-size:13px;line-height:1;flex:none;}
+  .score-cell .scc{font-family:var(--mono);font-weight:800;font-size:13px;min-width:16px;text-align:center;}
   .score-cell.c1{background:var(--num-soft);border-color:var(--num-line);}
-  .score-cell.c2{background:var(--op-soft);border-color:var(--op-line);}
+  .score-cell.c2{background:var(--admin-soft);border-color:var(--admin);}
   .score-cell.c3{background:var(--ore-soft);border-color:var(--ore-line);}
-  .score-cell.c4{background:var(--admin-soft);border-color:var(--admin);}
+  .score-cell.c4{background:var(--op-soft);border-color:var(--op-line);}
+  .score-summary{font-size:13.5px;font-weight:700;margin:4px 0;}
   .score-result{margin-top:14px;padding:14px;border-radius:12px;background:var(--ok-soft);color:var(--ok);font-weight:700;line-height:1.7;}
 
   /* ---- groups overview / cards ---- */
@@ -169,7 +170,7 @@
 
   /* ---- modal ---- */
   .overlay{position:fixed;inset:0;background:rgba(20,28,38,.5);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;z-index:50;}
-  .modal{background:#fff;border-radius:18px;max-width:820px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
+  .modal{background:#fff;border-radius:18px;max-width:1180px;width:100%;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.3);}
   .modal h3{font-size:19px;font-weight:800;margin-bottom:6px;}
   .modal .sub2{color:var(--muted);font-size:13.5px;margin-bottom:14px;}
   .stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-top:8px;}
@@ -532,6 +533,12 @@ function scoreSettingsPanelHTML(){
     '<div class="block-label" style="margin-top:18px">카드별 점수 설정</div>'+
     '<div id="scoreEditor">'+scoreCardsEditorHTML(cats)+'</div>'+
     '<div class="save-row"><button class="btn" id="saveScoreSettings">설정 저장</button><button class="btn ghost" id="cancelScoreSettings">닫기</button></div>'+
+    '<div class="block-label" style="margin-top:18px">모둠별 점수 계산 결과</div>'+
+    game.groups.map(function(g){
+      if(!g.scoreCounts) return '<p class="score-summary" style="color:var(--muted);font-weight:600">'+esc(g.name)+': 입력 중</p>';
+      var r=computeScore(cats,g.scoreCounts);
+      return '<p class="score-summary">'+esc(g.name)+': 기본 점수 '+r.base+'점 + 보너스 '+r.bonus+'점 − 벌칙 '+r.penalty+'점 = 총 '+r.total+'점</p>';
+    }).join("")+
     '</div>';
 }
 function wireScoreSettings(){
@@ -822,7 +829,8 @@ function computeScore(cats,counts){
 }
 function openScoreModal(){
   var cats=game.scoreCategories||defaultScoreCategories();
-  var counts={};
+  var counts={}, savedCounts=(game.groups[myIdx]&&game.groups[myIdx].scoreCounts)||{};
+  for(var scId in savedCounts){ counts[scId]=savedCounts[scId]; }
   var ov=document.createElement("div"); ov.className="overlay";
   function draw(resultHTML){
     var rowsHTML=cats.map(function(cat,ci){
@@ -843,6 +851,13 @@ function openScoreModal(){
     $("scClose").onclick=function(){ document.body.removeChild(ov); };
     $("scCalc").onclick=function(){
       var r=computeScore(cats,counts);
+      db.runTransaction(function(tx){
+        return tx.get(gameRef()).then(function(snap){
+          var data=snap.data();
+          data.groups[myIdx].scoreCounts=counts;
+          tx.update(gameRef(),{groups:data.groups});
+        });
+      }).catch(function(){});
       draw('<div class="score-result">기본 점수 '+r.base+'점 + 보너스 '+r.bonus+'점 − 벌칙 '+r.penalty+'점 = 총 '+r.total+'점</div>');
     };
   }
