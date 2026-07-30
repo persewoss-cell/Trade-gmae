@@ -359,6 +359,21 @@ var unsubGame=null, unsubTrades=null;
 var formula="", groupMsg=null, tradeMsg=null, productMsg=null, settingsOpen=false, scoreSettingsOpen=false, recipeSettingsOpen=false, connected=false;
 var SESSION_KEY="trade-online-session";
 
+/* ---------------- 알림(메시지) 3초 후 자동 사라짐 ---------------- */
+var MSG_AUTOCLEAR_MS=3000;
+var msgTimers={}, msgLast={};
+function armMsgAutoClear(key,val,clearFn){
+  if(val==null){ if(msgTimers[key]){ clearTimeout(msgTimers[key]); msgTimers[key]=null; } msgLast[key]=null; return; }
+  if(msgLast[key]===val) return;
+  msgLast[key]=val;
+  if(msgTimers[key]) clearTimeout(msgTimers[key]);
+  msgTimers[key]=setTimeout(function(){ msgTimers[key]=null; msgLast[key]=null; clearFn(); renderCurrent(); },MSG_AUTOCLEAR_MS);
+}
+function clearAllMsgTimers(){
+  Object.keys(msgTimers).forEach(function(k){ if(msgTimers[k]){ clearTimeout(msgTimers[k]); msgTimers[k]=null; } });
+  msgLast={};
+}
+
 var $=function(id){ return document.getElementById(id); };
 function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c];}); }
 function gameRef(){ return db.collection("games").doc(code); }
@@ -396,7 +411,7 @@ function subscribe(){
   }, function(){});
   saveSession();
 }
-function leave(){ if(unsubGame) unsubGame(); if(unsubTrades) unsubTrades(); unsubGame=unsubTrades=null; role=code=myIdx=null; game=null; trades=[]; formula=""; groupMsg=tradeMsg=productMsg=null; clearSession(); renderLanding(); }
+function leave(){ if(unsubGame) unsubGame(); if(unsubTrades) unsubTrades(); unsubGame=unsubTrades=null; role=code=myIdx=null; game=null; trades=[]; formula=""; groupMsg=tradeMsg=productMsg=null; clearAllMsgTimers(); clearSession(); renderLanding(); }
 
 /* ---------------- 랜딩 ---------------- */
 function genCode(){ var s=""; for(var i=0;i<4;i++) s+=Math.floor(Math.random()*10); return s; }
@@ -586,6 +601,7 @@ function renderCurrent(){
 /* ---------------- 교사 화면 ---------------- */
 function renderTeacher(){
   if(!game) return;
+  armMsgAutoClear("trade",tradeMsg,function(){ tradeMsg=null; });
   var s=$("screen"); var h=topbar("교사 화면");
 
   // 관리자 패널
@@ -918,6 +934,9 @@ function doDeleteGame(){
 /* ---------------- 모둠 화면 ---------------- */
 function renderGroup(){
   if(!game) return;
+  armMsgAutoClear("group",groupMsg,function(){ groupMsg=null; });
+  armMsgAutoClear("trade",tradeMsg,function(){ tradeMsg=null; });
+  armMsgAutoClear("product",productMsg,function(){ productMsg=null; });
   if(myIdx>=game.groups.length){ $("screen").innerHTML=topbar("모둠")+'<div class="panel"><p style="font-weight:700">이 모둠은 게임에서 제거됐어요. 나가기 후 다시 참여해 주세요.</p></div>'; $("leaveBtn").onclick=leave; return; }
   var g=game.groups[myIdx];
   var s=$("screen"); var h=topbar(g.name);
