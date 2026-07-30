@@ -127,10 +127,6 @@
   .prod-chip.selected{outline:3px solid var(--ink);outline-offset:1px;}
   .prod-chip.disabled{opacity:.35;cursor:not-allowed;}
   .prod-chip .cc{font-family:var(--mono);font-weight:800;}
-  .prod-chip.pc1{background:var(--ok-soft);border-color:var(--ok);color:#1f8a4c;}
-  .prod-chip.pc2{background:var(--num-soft);border-color:var(--num-line);color:#0e6b5c;}
-  .prod-chip.pc3{background:var(--ore-soft);border-color:var(--ore-line);color:#7a4d0e;}
-  .prod-chip.pc4{background:var(--op-soft);border-color:var(--op-line);color:#553a94;}
   .prod-chip.sc1{background:var(--num-soft);border-color:var(--num-line);color:#0e6b5c;}
   .prod-chip.sc2{background:var(--admin-soft);border-color:var(--admin);color:#26398a;}
   .prod-chip.sc3{background:var(--ore-soft);border-color:var(--ore-line);color:#7a4d0e;}
@@ -194,7 +190,7 @@
   .stepgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:8px;}
   .stepper{display:flex;align-items:center;justify-content:space-between;gap:6px;border:1.5px solid var(--line);border-radius:10px;padding:6px 8px;min-width:0;}
   .stepper .g{font-family:var(--mono);font-weight:800;font-size:13px;text-align:center;padding:5px 7px;border-radius:8px;white-space:nowrap;}
-  .stepper.num .g{color:var(--num);background:var(--num-soft);} .stepper.op .g{color:var(--op);background:var(--op-soft);}
+  .stepper.muted .g{color:var(--muted);background:#eef1f5;}
   .stepper.sc1 .g{color:#0e6b5c;background:var(--num-soft);} .stepper.sc2 .g{color:#26398a;background:var(--admin-soft);}
   .stepper.sc3 .g{color:#7a4d0e;background:var(--ore-soft);} .stepper.sc4 .g{color:#553a94;background:var(--op-soft);}
   .stepper .c{font-family:var(--mono);font-weight:800;font-size:15px;min-width:30px;text-align:center;flex:none;}
@@ -465,7 +461,7 @@ function cardsGridHTML(cardsObj){
     h+='<div class="tile '+(isNum?"num":"op")+(n===0?" zero":"")+'"><span>'+esc(k)+'</span><span class="cnt">'+n+'</span></div>'; });
   return h+'</div>';
 }
-function resourceCatClass(rname){
+function catClassByName(rname){
   var found=null;
   (game.scoreCategories||defaultScoreCategories()).forEach(function(cat,ci){
     cat.items.forEach(function(it){ if(it.name===rname) found="sc"+((ci%4)+1); });
@@ -474,7 +470,7 @@ function resourceCatClass(rname){
 }
 function resChipsHTML(resObj){
   var h='<div class="prod-row">';
-  game.resources.forEach(function(r){ var n=(resObj&&resObj[r.id])||0; h+='<span class="prod-chip '+resourceCatClass(r.name)+'">'+esc(r.name)+'<span class="cc">'+n+'</span></span>'; });
+  game.resources.forEach(function(r){ var n=(resObj&&resObj[r.id])||0; h+='<span class="prod-chip '+catClassByName(r.name)+'">'+esc(r.name)+'<span class="cc">'+n+'</span></span>'; });
   return h+'</div>';
 }
 function boardHTML(){
@@ -495,19 +491,27 @@ function cardDisplayName(k){
   var found=null; allScoreCardItems().forEach(function(it){ if(it.id===k) found=it.name; });
   if(found) return found;
   var rf=null; (game.resources||[]).forEach(function(r){ if(r.id===k) rf=r.name; });
-  return rf||k;
+  if(rf) return rf;
+  var pf=null; (game.products||defaultProducts()).forEach(function(p){ if(p.id===k) pf=p.name; });
+  return pf||k;
 }
 function cardCatClass(k){
-  if(NUMS.indexOf(k)>=0) return "num";
-  if(OPS.indexOf(k)>=0) return "op";
+  if(NUMS.indexOf(k)>=0||OPS.indexOf(k)>=0) return "muted";
   var found=null; allScoreCardItems().forEach(function(it){ if(it.id===k) found="sc"+((it.catIdx%4)+1); });
   if(found) return found;
-  var rr=null; (game.resources||[]).forEach(function(r){ if(r.id===k) rr=resourceCatClass(r.name); });
-  return rr||"op";
+  var rr=null; (game.resources||[]).forEach(function(r){ if(r.id===k) rr=catClassByName(r.name); });
+  if(rr) return rr;
+  var pr=null; (game.products||defaultProducts()).forEach(function(p){ if(p.id===k) pr=catClassByName(p.name); });
+  return pr||"muted";
 }
 function isResourceId(k,resList){
   var list=resList||(game&&game.resources)||[]; var found=false;
   list.forEach(function(r){ if(r.id===k) found=true; });
+  return found;
+}
+function isProductId(k,prodList){
+  var list=prodList||(game&&game.products)||[]; var found=false;
+  list.forEach(function(p){ if(p.id===k) found=true; });
   return found;
 }
 function scoreCardChipsHTML(cardsObj){
@@ -525,7 +529,6 @@ function scoreCardChipsHTML(cardsObj){
 function resNameById(rid){ var f=null; (game.resources||[]).forEach(function(r){ if(r.id===rid) f=r; }); return f?f.name:rid; }
 function prodById(pid){ var f=null; (game.products||defaultProducts()).forEach(function(p){ if(p.id===pid) f=p; }); return f; }
 function prodNameById(pid){ var p=prodById(pid); return p?p.name:pid; }
-function prodCatClass(cat){ return {food:"pc1",life:"pc2",material:"pc3",tech:"pc4"}[cat]||"pc1"; }
 function recipeText(prod){
   var parts=[]; var res=(prod.recipe&&prod.recipe.res)||{}, pr=(prod.recipe&&prod.recipe.prod)||{};
   for(var rid in res){ parts.push(resNameById(rid)+" "+res[rid]); }
@@ -549,7 +552,7 @@ function productChipsHTML(countsObj){
   var products=game.products||defaultProducts();
   var h='<div class="prod-row">';
   products.forEach(function(p){ var n=(countsObj&&countsObj[p.id])||0;
-    h+='<button type="button" class="prod-chip '+prodCatClass(p.category)+'" data-pinfo="'+esc(p.id)+'">'+esc(p.name)+'<span class="cc">'+n+'</span></button>';
+    h+='<button type="button" class="prod-chip '+catClassByName(p.name)+'" data-pinfo="'+esc(p.id)+'">'+esc(p.name)+'<span class="cc">'+n+'</span></button>';
   });
   return h+'</div>';
 }
@@ -959,8 +962,9 @@ function renderGroup(){
   h+='</div>';
 
   // 교환
-  var incoming=trades.filter(function(t){return t.status==="pending"&&t.to===myIdx;});
-  var outgoing=trades.filter(function(t){return t.status==="pending"&&t.from===myIdx;});
+  var incoming=trades.filter(function(t){return t.status==="pending"&&t.to===myIdx&&t.kind!=="product";});
+  var outgoing=trades.filter(function(t){return t.status==="pending"&&t.from===myIdx&&t.kind!=="product";});
+  var outgoingProducts=trades.filter(function(t){return t.status==="pending"&&t.from===myIdx&&t.kind==="product";});
   h+='<div class="panel"><div class="block-label">카드 교환(무역)</div>'+
      '<button class="btn trade" id="proposeBtn">다른 모둠에 교환 제안하기</button>'+
      (tradeMsg?'<div class="msg '+(tradeMsg.ok?"ok":"bad")+'" style="margin-top:12px">'+esc(tradeMsg.text)+'</div>':'');
@@ -978,21 +982,22 @@ function renderGroup(){
   h+='<p class="mini-label" style="margin-top:16px">보낸 제안 ('+outgoing.length+')</p>';
   if(!outgoing.length) h+='<p class="hint" style="margin:0">보낸 제안이 없어요.</p>';
   else outgoing.forEach(function(t){
-    if(t.kind==="product"){
-      h+='<div class="offer"><div class="ohead">선생님에게 → '+esc(t.productName)+' 신청</div>'+
-         '<div class="oact"><button class="btn ghost slim" data-cancel="'+esc(t.id)+'">신청 취소</button></div></div>';
-    } else {
-      h+='<div class="offer"><div class="ohead">→ '+esc(t.toName)+' 모둠에게</div>'+
-         '<div class="oline">주는 카드: '+miniCardsHTML(t.give)+'</div>'+
-         '<div class="oline">받고 싶은 카드: '+miniCardsHTML(t.want)+'</div>'+
-         '<div class="oact"><button class="btn ghost slim" data-cancel="'+esc(t.id)+'">제안 취소</button></div></div>';
-    }
+    h+='<div class="offer"><div class="ohead">→ '+esc(t.toName)+' 모둠에게</div>'+
+       '<div class="oline">주는 카드: '+miniCardsHTML(t.give)+'</div>'+
+       '<div class="oline">받고 싶은 카드: '+miniCardsHTML(t.want)+'</div>'+
+       '<div class="oact"><button class="btn ghost slim" data-cancel="'+esc(t.id)+'">제안 취소</button></div></div>';
   });
   h+='</div>';
 
   h+='<div class="panel"><div class="block-label">무역센터에서 생산품으로 교환하기</div>'+
      '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
-     '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button></div>';
+     '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button>'+
+     '<p class="mini-label" style="margin-top:16px">내 신청 현황 ('+outgoingProducts.length+')</p>'+
+     (outgoingProducts.length?outgoingProducts.map(function(t){
+       return '<div class="offer"><div class="ohead">선생님에게 → '+esc(t.productName)+' 신청</div>'+
+         '<div class="oact"><button class="btn ghost slim" data-cancel="'+esc(t.id)+'">신청 취소</button></div></div>';
+     }).join(""):'<p class="hint" style="margin:0">신청한 생산품이 없어요.</p>')+
+     '</div>';
 
   if(game.scoreEnabled){
     h+='<div class="panel"><div class="block-label">점수 계산</div>'+
@@ -1147,7 +1152,7 @@ function openProductRequestModal(){
     var g=game.groups[myIdx];
     function rowHTML(list){ return '<div class="prod-row">'+list.map(function(p){
       var afford=canAffordProduct(g,p);
-      return '<button type="button" class="prod-chip '+prodCatClass(p.category)+(selected===p.id?" selected":"")+(afford?"":" disabled")+'" '+(afford?"":"disabled")+' data-pick="'+esc(p.id)+'" title="재료: '+esc(recipeText(p))+(afford?"":" (재료 부족)")+'">'+esc(p.name)+'</button>';
+      return '<button type="button" class="prod-chip '+catClassByName(p.name)+(selected===p.id?" selected":"")+(afford?"":" disabled")+'" '+(afford?"":"disabled")+' data-pick="'+esc(p.id)+'" title="재료: '+esc(recipeText(p))+(afford?"":" (재료 부족)")+'">'+esc(p.name)+'</button>';
     }).join("")+'</div>'; }
     var selInfo=selected?('<p class="hint" style="margin-top:10px">필요한 재료: <b>'+esc(recipeText(prodById(selected)))+'</b></p>'):'';
     ov.innerHTML='<div class="modal"><h3>생산품으로 교환하기</h3><p class="sub2">원하는 생산품을 하나 골라 신청하면 선생님이 확인 후 승인해요. 재료가 부족한 생산품은 고를 수 없어요.</p>'+
@@ -1183,8 +1188,12 @@ function openTradeModal(){
 
   var ov=document.createElement("div"); ov.className="overlay";
   var WANT_KEYS=ALL.concat(allScoreCardItems().map(function(it){return it.id;}));
-  var GIVE_KEYS=WANT_KEYS.concat(game.resources.map(function(r){return r.id;}));
-  function ownedCount(k){ return isResourceId(k) ? ((g.redeemed&&g.redeemed[k])||0) : (g.cards[k]||0); }
+  var GIVE_KEYS=WANT_KEYS.concat(game.resources.map(function(r){return r.id;})).concat((game.products||defaultProducts()).map(function(p){return p.id;}));
+  function ownedCount(k){
+    if(isResourceId(k)) return (g.redeemed&&g.redeemed[k])||0;
+    if(isProductId(k)) return (g.products&&g.products[k])||0;
+    return g.cards[k]||0;
+  }
   function giveCards(){ return GIVE_KEYS.filter(function(k){return ownedCount(k)>0;}); }
 
   function draw(){
@@ -1229,9 +1238,22 @@ function acceptTrade(id){
       if(!ts.exists||ts.data().status!=="pending") throw new Error("DONE");
       var data=gs.data(), from=data.groups[t.from], to=data.groups[t.to], k;
       from.redeemed=from.redeemed||{}; to.redeemed=to.redeemed||{};
-      function owned(gr,k){ return isResourceId(k,data.resources) ? (gr.redeemed[k]||0) : (gr.cards[k]||0); }
-      function addOwned(gr,k,n){ if(isResourceId(k,data.resources)){ gr.redeemed[k]=(gr.redeemed[k]||0)+n; } else { gr.cards[k]=(gr.cards[k]||0)+n; } }
-      function subOwned(gr,k,n){ if(isResourceId(k,data.resources)){ gr.redeemed[k]-=n; } else { gr.cards[k]-=n; } }
+      from.products=from.products||{}; to.products=to.products||{};
+      function owned(gr,k){
+        if(isResourceId(k,data.resources)) return gr.redeemed[k]||0;
+        if(isProductId(k,data.products)) return gr.products[k]||0;
+        return gr.cards[k]||0;
+      }
+      function addOwned(gr,k,n){
+        if(isResourceId(k,data.resources)) gr.redeemed[k]=(gr.redeemed[k]||0)+n;
+        else if(isProductId(k,data.products)) gr.products[k]=(gr.products[k]||0)+n;
+        else gr.cards[k]=(gr.cards[k]||0)+n;
+      }
+      function subOwned(gr,k,n){
+        if(isResourceId(k,data.resources)) gr.redeemed[k]-=n;
+        else if(isProductId(k,data.products)) gr.products[k]-=n;
+        else gr.cards[k]-=n;
+      }
       for(k in t.give){ if(owned(from,k)<t.give[k]) throw new Error("FROM"); }
       for(k in t.want){ if(owned(to,k)<t.want[k]) throw new Error("TO"); }
       for(k in t.give){ subOwned(from,k,t.give[k]); addOwned(to,k,t.give[k]); }
