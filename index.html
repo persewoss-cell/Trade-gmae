@@ -141,7 +141,6 @@
   .recipe-2col{display:grid;grid-template-columns:1fr;gap:0 24px;}
   @media(min-width:860px){.recipe-2col{grid-template-columns:1fr 1fr;}}
   .recipe-block{border-top:1.5px dashed var(--line);margin-top:14px;padding-top:14px;}
-  .trade-box{border:1.5px dashed var(--line);border-radius:12px;padding:14px;margin-top:12px;}
   .score-result{margin-top:14px;padding:14px;border-radius:12px;background:var(--ok-soft);color:var(--ok);font-weight:700;line-height:1.7;}
 
   /* ---- groups overview / cards ---- */
@@ -628,7 +627,6 @@ function renderTeacher(){
     var pendingTotal=game.resources.reduce(function(sum,r){ return sum+(g.resources[r.id]||0); },0);
     h+='<div class="gcard"><div class="gtop"><span class="badge">'+(i+1)+'</span><span class="gn">'+esc(g.name)+'</span></div>'+
        '<div class="gbody"><p class="mini-label">보유 카드</p>'+cardsGridHTML(g.cards)+
-       '<p class="mini-label" style="margin-top:12px">보유 카드(점수용)</p>'+scoreCardChipsHTML(g.cards)+
        '<p class="mini-label" style="margin-top:12px">생성한 자원</p>'+resChipsHTML(g.resources)+
        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px">'+
          '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
@@ -954,11 +952,7 @@ function renderGroup(){
   var incoming=trades.filter(function(t){return t.status==="pending"&&t.to===myIdx;});
   var outgoing=trades.filter(function(t){return t.status==="pending"&&t.from===myIdx;});
   h+='<div class="panel"><div class="block-label">카드 교환(무역)</div>'+
-     '<div class="trade-box"><button class="btn trade" id="proposeBtn">다른 모둠에 교환 제안하기</button></div>'+
-     '<div class="trade-box"><div class="block-label" style="margin-top:0">무역센터에서 생산품으로 교환하기</div>'+
-       '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
-       '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button>'+
-     '</div>'+
+     '<button class="btn trade" id="proposeBtn">다른 모둠에 교환 제안하기</button>'+
      (tradeMsg?'<div class="msg '+(tradeMsg.ok?"ok":"bad")+'" style="margin-top:12px">'+esc(tradeMsg.text)+'</div>':'');
 
   h+='<p class="mini-label" style="margin-top:16px">받은 제안 ('+incoming.length+')</p>';
@@ -985,6 +979,10 @@ function renderGroup(){
     }
   });
   h+='</div>';
+
+  h+='<div class="panel"><div class="block-label">무역센터에서 생산품으로 교환하기</div>'+
+     '<p class="hint" style="margin-top:0">원하는 생산품을 골라 신청하면 선생님이 확인 후 승인해요.</p>'+
+     '<button class="btn ore" id="proposeProductBtn">생산품 선택하기</button></div>';
 
   if(game.scoreEnabled){
     h+='<div class="panel"><div class="block-label">점수 계산</div>'+
