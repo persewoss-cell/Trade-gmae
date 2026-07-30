@@ -61,6 +61,7 @@
   .code-in{font-family:var(--mono);font-size:26px;font-weight:800;text-align:center;letter-spacing:.18em;text-transform:uppercase;padding:12px;border:2px solid var(--line);border-radius:12px;width:100%;}
   .grp-pick{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
   .grp-pick button{border:1.5px solid var(--ore-line);background:var(--ore-soft);color:#7a4d0e;border-radius:10px;padding:12px 0;font-weight:800;font-size:16px;}
+  .grp-pick button.selected{background:var(--ore);color:#fff;border-color:var(--ore);}
   .setup{background:#fff;border:2px solid var(--err);border-radius:16px;padding:20px;max-width:720px;margin:0 auto;}
   .setup h2{color:var(--err);margin-bottom:8px;} .setup ol{margin:10px 0 0;padding-left:20px;} .setup li{margin-bottom:8px;}
   .setup code{background:#f2f4f8;padding:2px 6px;border-radius:6px;font-family:var(--mono);font-size:13px;}
@@ -358,13 +359,13 @@ function init(){
 }
 function restoreSession(){
   try{
-    var s=JSON.parse(localStorage.getItem(SESSION_KEY)||"null");
+    var s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");
     if(s&&s.code&&s.role){ role=s.role; code=s.code; myIdx=(typeof s.myIdx==="number")?s.myIdx:null; subscribe(); return; }
   }catch(e){}
   renderLanding();
 }
-function saveSession(){ try{ localStorage.setItem(SESSION_KEY,JSON.stringify({role:role,code:code,myIdx:myIdx})); }catch(e){} }
-function clearSession(){ try{ localStorage.removeItem(SESSION_KEY); }catch(e){} }
+function saveSession(){ try{ sessionStorage.setItem(SESSION_KEY,JSON.stringify({role:role,code:code,myIdx:myIdx})); }catch(e){} }
+function clearSession(){ try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){} }
 
 /* ---------------- 실시간 구독 ---------------- */
 function subscribe(){
@@ -427,6 +428,8 @@ function renderLanding(){
       role="teacher"; code=c; myIdx=null; subscribe();
     }).catch(function(){ alert("게임 생성에 실패했어요. 인터넷 연결과 파이어베이스 설정을 확인해 주세요."); });
   };
+  $("tCode").onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); $("tOpen").click(); } };
+  $("gCode").onkeydown=function(e){ if(e.key==="Enter"){ e.preventDefault(); $("gNext").click(); } };
   $("tOpen").onclick=function(){
     var c=($("tCode").value||"").trim().toUpperCase(); if(c.length<4) return alert("코드 4자리를 입력해 주세요.");
     db.collection("games").doc(c).get().then(function(snap){
@@ -598,7 +601,8 @@ function renderTeacher(){
   var pendAll=trades.filter(function(t){return t.status==="pending";});
   var pendCards=pendAll.filter(function(t){return t.kind!=="product";});
   var pendProducts=pendAll.filter(function(t){return t.kind==="product";});
-  h+='<div class="panel"><div class="block-label">진행 중 교환 ('+pendCards.length+')</div>';
+  h+='<div class="panel"><div class="block-label">진행 중 교환 ('+pendCards.length+')</div>'+
+     (tradeMsg?'<div class="msg '+(tradeMsg.ok?"ok":"bad")+'" style="margin-bottom:12px">'+esc(tradeMsg.text)+'</div>':'');
   if(!pendCards.length) h+='<p class="hint" style="margin:0">아직 진행 중인 교환이 없어요.</p>';
   else pendCards.forEach(function(t){
     h+='<div class="offer"><div class="ohead">'+esc(t.fromName)+' → '+esc(t.toName)+'</div>'+
@@ -1190,13 +1194,13 @@ function openTradeModal(){
       return '<div class="stepper '+cls+'"><button data-wminus="'+esc(k)+'">−</button><span class="g">['+esc(cardDisplayName(k))+'카드]</span><span class="c">'+c+'장</span><button data-wplus="'+esc(k)+'">＋</button></div>';
     }).join("");
     ov.innerHTML='<div class="modal"><h3>교환 제안</h3><p class="sub2">내가 줄 카드와 받고 싶은 카드를 정해 상대 모둠에 보냅니다.</p>'+
-      '<div class="field" style="margin-bottom:14px"><label>어느 모둠에게?</label><select class="num-in" id="tmTo">'+
-        others.map(function(o){return '<option value="'+o.i+'"'+(o.i===toIdx?" selected":"")+'>'+esc(o.name)+'</option>';}).join("")+'</select></div>'+
+      '<div class="field" style="margin-bottom:14px"><label>어느 모둠에게?</label><div class="grp-pick" id="tmToPick">'+
+        others.map(function(o){return '<button type="button" data-to="'+o.i+'" class="'+(o.i===toIdx?"selected":"")+'">'+esc(o.name)+'</button>';}).join("")+'</div></div>'+
       '<p class="mini-label">내가 줄 카드 <span style="color:var(--muted);font-weight:600">(가진 만큼만)</span></p><div class="stepgrid">'+giveGrid+'</div>'+
       '<p class="mini-label" style="margin-top:14px">받고 싶은 카드</p><div class="stepgrid">'+wantGrid+'</div>'+
       '<div class="foot"><button class="btn trade" id="tmSend">제안 보내기</button><button class="btn ghost" id="tmCancel">닫기</button></div></div>';
 
-    $("tmTo").onchange=function(){ toIdx=+$("tmTo").value; };
+    Array.prototype.forEach.call(ov.querySelectorAll("[data-to]"),function(b){ b.onclick=function(){ toIdx=+b.getAttribute("data-to"); draw(); }; });
     function bind(attr,obj,capFn){ Array.prototype.forEach.call(ov.querySelectorAll("["+attr+"]"),function(b){ b.onclick=function(){ var k=b.getAttribute(attr); var d=attr.indexOf("plus")>=0?1:-1; var nv=(obj[k]||0)+d; var cap=capFn(k); if(nv<0)nv=0; if(nv>cap)nv=cap; obj[k]=nv; draw(); }; }); }
     bind("data-gplus",giveSel,function(k){return ownedCount(k);}); bind("data-gminus",giveSel,function(k){return ownedCount(k);});
     bind("data-wplus",wantSel,function(){return 20;}); bind("data-wminus",wantSel,function(){return 20;});
@@ -1247,11 +1251,11 @@ function acceptTrade(id){
       tx.update(gameRef(),{groups:data.groups});
       tx.update(tRef,{status:"accepted"});
     }); });
-  }).then(function(){ tradeMsg={ok:true,text:"교환 완료! 카드가 서로 바뀌었어요."}; renderCurrent(); })
+  }).then(function(){ tradeMsg={ok:true,text:t.fromName+" ↔ "+t.toName+" 교환 완료! 카드가 서로 바뀌었어요."}; renderCurrent(); })
     .catch(function(e){ var m=String(e.message||e);
       if(m.indexOf("DONE")>=0) tradeMsg={ok:false,text:"이미 처리된 제안이에요."};
-      else if(m.indexOf("FROM")>=0) tradeMsg={ok:false,text:"상대 모둠의 카드가 부족해 교환이 취소됐어요."};
-      else if(m.indexOf("TO")>=0) tradeMsg={ok:false,text:"우리 모둠 카드가 부족해요."};
+      else if(m.indexOf("FROM")>=0) tradeMsg={ok:false,text:t.fromName+"의 카드가 부족해서 교환이 취소됐어요."};
+      else if(m.indexOf("TO")>=0) tradeMsg={ok:false,text:t.toName+"의 카드가 부족해서 교환이 취소됐어요."};
       else tradeMsg={ok:false,text:"교환 중 문제가 생겼어요. 다시 시도해 주세요."};
       renderCurrent(); });
 }
