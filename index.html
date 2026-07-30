@@ -106,6 +106,20 @@
   .save-row{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
   .warn{color:var(--err);font-weight:700;font-size:14px;margin-top:8px;min-height:20px;}
 
+  /* ---- score calculation ---- */
+  .score-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+  .score-cell{display:flex;align-items:center;gap:6px;border-radius:10px;padding:7px 10px;border:1.5px solid var(--line);}
+  .score-cell .scn{font-weight:800;font-size:13px;white-space:nowrap;}
+  .score-cell input.scp{width:60px;text-align:center;font-family:var(--mono);font-weight:700;font-size:14px;padding:5px 4px;border:1.5px solid var(--line);border-radius:7px;}
+  .score-cell .scu{font-size:11px;color:var(--muted);}
+  .score-cell button{width:26px;height:26px;border-radius:6px;border:1.5px solid rgba(0,0,0,.15);background:rgba(255,255,255,.65);font-weight:800;font-size:14px;line-height:1;flex:none;}
+  .score-cell .scc{font-family:var(--mono);font-weight:800;font-size:14px;min-width:20px;text-align:center;}
+  .score-cell.c1{background:var(--num-soft);border-color:var(--num-line);}
+  .score-cell.c2{background:var(--op-soft);border-color:var(--op-line);}
+  .score-cell.c3{background:var(--ore-soft);border-color:var(--ore-line);}
+  .score-cell.c4{background:var(--admin-soft);border-color:var(--admin);}
+  .score-result{margin-top:14px;padding:14px;border-radius:12px;background:var(--ok-soft);color:var(--ok);font-weight:700;line-height:1.7;}
+
   /* ---- groups overview / cards ---- */
   .groups{display:grid;grid-template-columns:1fr;gap:16px;}
   @media(min-width:720px){.groups{grid-template-columns:repeat(2,1fr);}}
@@ -218,10 +232,22 @@ function defaultResources(){
   return names.map(function(n,i){ return {id:"r"+(i+1),name:n,target:targets[i]}; });
 }
 function makeGroup(i,resources){ var res={},red={}; resources.forEach(function(r){ res[r.id]=0; red[r.id]=0; }); return {name:(i+1)+"모둠",cards:emptyCards(),resources:res,redeemed:red}; }
+function defaultScoreCategories(){
+  var defs=[
+    [["물",5],["밀",5],["과일",8],["빵",25],["통조림",65]],
+    [["목화",8],["석유",10],["천",30],["플라스틱",34],["페트병",45],["옷",100]],
+    [["모래",6],["목재",6],["철광석",10],["유리",32],["강철",40],["가구",60],["집",160]],
+    [["반도체",60],["컴퓨터",145],["비행기",195],["로봇",260]]
+  ];
+  var counter=0;
+  return defs.map(function(items,ci){
+    return {id:"cat"+(ci+1),items:items.map(function(it){ counter++; return {id:"sc"+counter,name:it[0],points:it[1]}; })};
+  });
+}
 function defaultGameData(groupCount){
   var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
   var resources=defaultResources(); var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources));
-  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false};
+  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreCategories:defaultScoreCategories()};
 }
 
 function normalize(str){
@@ -269,7 +295,7 @@ var db=null, ready=false;
 var role=null, code=null, myIdx=null;   // 이 기기의 정체성
 var game=null, trades=[];               // 실시간 스냅샷
 var unsubGame=null, unsubTrades=null;
-var formula="", groupMsg=null, tradeMsg=null, settingsOpen=false, connected=false;
+var formula="", groupMsg=null, tradeMsg=null, settingsOpen=false, scoreSettingsOpen=false, connected=false;
 var SESSION_KEY="trade-online-session";
 
 var $=function(id){ return document.getElementById(id); };
@@ -422,6 +448,7 @@ function renderTeacher(){
   h+='<div class="panel admin">'+
      '<div class="ctl-row"><div style="font-weight:800;font-size:18px;margin-right:auto">카드 배분 <span style="font-weight:600;color:var(--muted);font-size:14px">· 설정된 가중치에 따라 랜덤 배분</span></div>'+
         '<button class="btn ghost slim" id="tSettings">⚙ 설정</button>'+
+        '<button class="btn ghost slim" id="tScoreSettings">🏆 점수 계산</button>'+
         '<button class="btn danger slim" id="tResetCards">카드·자원 초기화</button>'+
         '<button class="btn danger slim" id="tDelete">게임 삭제</button></div>'+
      '<div class="ctl-row" style="margin-top:14px">'+
@@ -436,6 +463,8 @@ function renderTeacher(){
      '<p class="hint">모든 기기에 실시간 반영돼요.</p>'+
      settingsPanelHTML()+
      '</div>';
+
+  if(scoreSettingsOpen) h+=scoreSettingsPanelHTML();
 
   // 진행 중 교환
   var pend=trades.filter(function(t){return t.status==="pending";});
@@ -471,6 +500,7 @@ function renderTeacher(){
 
   $("leaveBtn").onclick=leave;
   $("tSettings").onclick=function(){ settingsOpen=!settingsOpen; renderTeacher(); };
+  $("tScoreSettings").onclick=function(){ scoreSettingsOpen=!scoreSettingsOpen; renderTeacher(); };
   $("distOne").onclick=function(){ var i=+$("distGroup").value,n=+$("distN").value; if(!(n>=1))return alert("장수를 1 이상으로."); doDistribute(i,n); };
   $("distAll").onclick=function(){ var n=+$("distAllN").value; if(!(n>=1))return alert("장수를 1 이상으로."); doDistribute("all",n); };
   $("tResetCards").onclick=doResetCards;
@@ -479,6 +509,48 @@ function renderTeacher(){
   Array.prototype.forEach.call(s.querySelectorAll("[data-dec]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.dec,"declined"); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-redeem]"),function(b){ b.onclick=function(){ doRedeemGroup(+b.dataset.redeem); }; });
   if(settingsOpen) wireSettings();
+  if(scoreSettingsOpen) wireScoreSettings();
+}
+
+function scoreCardsEditorHTML(cats){
+  var h='';
+  cats.forEach(function(cat,ci){
+    h+='<div class="score-row">';
+    cat.items.forEach(function(it){
+      h+='<div class="score-cell c'+((ci%4)+1)+'" data-sid="'+esc(it.id)+'"><span class="scn">'+esc(it.name)+'</span><input class="scp" type="number" min="0" value="'+it.points+'" inputmode="numeric"><span class="scu">점</span></div>';
+    });
+    h+='</div>';
+  });
+  return h;
+}
+function scoreSettingsPanelHTML(){
+  var cats=game.scoreCategories||defaultScoreCategories();
+  return '<div class="panel">'+
+    '<div class="block-label" style="margin-top:0">점수 계산 활성화</div>'+
+    '<button class="btn '+(game.scoreEnabled?"ore":"ghost")+' slim" id="toggleScore">점수 계산 활성화 버튼 · 지금 '+(game.scoreEnabled?"켜짐":"꺼짐")+'</button>'+
+    '<p class="hint">켜면 모든 모둠 화면에 점수 계산 버튼이 나타나요. 누르면 모든 태블릿에 바로 반영돼요.</p>'+
+    '<div class="block-label" style="margin-top:18px">카드별 점수 설정</div>'+
+    '<div id="scoreEditor">'+scoreCardsEditorHTML(cats)+'</div>'+
+    '<div class="save-row"><button class="btn" id="saveScoreSettings">설정 저장</button><button class="btn ghost" id="cancelScoreSettings">닫기</button></div>'+
+    '</div>';
+}
+function wireScoreSettings(){
+  $("toggleScore").onclick=function(){
+    gameRef().update({scoreEnabled:!game.scoreEnabled}).catch(function(){ alert("점수 계산 활성화 변경에 실패했어요."); });
+  };
+  $("cancelScoreSettings").onclick=function(){ scoreSettingsOpen=false; renderTeacher(); };
+  $("saveScoreSettings").onclick=saveScoreSettings;
+}
+function saveScoreSettings(){
+  var cats=game.scoreCategories||defaultScoreCategories();
+  var newCats=cats.map(function(cat){
+    return {id:cat.id,items:cat.items.map(function(it){
+      var input=$("scoreEditor").querySelector('[data-sid="'+it.id+'"] .scp');
+      var v=Number(input.value); if(isNaN(v)||v<0) v=0;
+      return {id:it.id,name:it.name,points:v};
+    })};
+  });
+  gameRef().update({scoreCategories:newCats}).then(function(){ scoreSettingsOpen=false; renderTeacher(); }).catch(function(){ alert("점수 설정 저장에 실패했어요."); });
 }
 
 function settingsPanelHTML(){
@@ -649,6 +721,11 @@ function renderGroup(){
   });
   h+='</div>';
 
+  if(game.scoreEnabled){
+    h+='<div class="panel"><div class="block-label">점수 계산</div>'+
+       '<button class="btn ore" id="scoreBtn">점수 계산하기</button></div>';
+  }
+
   s.innerHTML=h;
 
   $("leaveBtn").onclick=leave;
@@ -676,6 +753,7 @@ function renderGroup(){
   $("genBtn").onclick=doGenerate;
   if($("redeemBtn")) $("redeemBtn").onclick=function(){ doRedeemGroup(myIdx); };
   $("proposeBtn").onclick=openTradeModal;
+  if($("scoreBtn")) $("scoreBtn").onclick=openScoreModal;
   Array.prototype.forEach.call(s.querySelectorAll("[data-acc]"),function(b){ b.onclick=function(){ acceptTrade(b.dataset.acc); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-dec]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.dec,"declined"); }; });
   Array.prototype.forEach.call(s.querySelectorAll("[data-cancel]"),function(b){ b.onclick=function(){ setTradeStatus(b.dataset.cancel,"cancelled"); }; });
@@ -722,6 +800,53 @@ function doRedeemGroup(idx){
       tx.update(gameRef(),{groups:data.groups});
     });
   }).then(function(){ renderCurrent(); }).catch(function(){ alert("교환 확인 처리에 실패했어요."); });
+}
+
+/* ---------------- 점수 계산 ---------------- */
+function computeScore(cats,counts){
+  var base=0,bonus=0,penalty=0,catDetails=[];
+  cats.forEach(function(cat){
+    var catBase=0,enteredTypes=0,total=cat.items.length;
+    cat.items.forEach(function(it){
+      var c=counts[it.id]||0;
+      catBase+=c*it.points;
+      if(c>0) enteredTypes++;
+    });
+    base+=catBase;
+    var catBonus=0,catPenalty=0;
+    if(enteredTypes===total){ catBonus=100; bonus+=100; }
+    else if(enteredTypes<total/2){ catPenalty=100; penalty+=100; }
+    catDetails.push({enteredTypes:enteredTypes,total:total,catBase:catBase,catBonus:catBonus,catPenalty:catPenalty});
+  });
+  return {base:base,bonus:bonus,penalty:penalty,total:base+bonus-penalty,catDetails:catDetails};
+}
+function openScoreModal(){
+  var cats=game.scoreCategories||defaultScoreCategories();
+  var counts={};
+  var ov=document.createElement("div"); ov.className="overlay";
+  function draw(resultHTML){
+    var rowsHTML=cats.map(function(cat,ci){
+      var cellsHTML=cat.items.map(function(it){
+        var v=counts[it.id]||0;
+        return '<div class="score-cell c'+((ci%4)+1)+'"><span class="scn">'+esc(it.name)+'</span>'+
+          '<button type="button" data-sminus="'+esc(it.id)+'">−</button><span class="scc">'+v+'</span><button type="button" data-splus="'+esc(it.id)+'">＋</button></div>';
+      }).join("");
+      return '<div class="score-row">'+cellsHTML+'</div>';
+    }).join("");
+    ov.innerHTML='<div class="modal"><h3>점수 계산</h3><p class="sub2">가지고 있는 카드 개수를 정하고 계산하기를 눌러주세요.</p>'+
+      rowsHTML+
+      '<div class="foot"><button class="btn ore" id="scCalc">계산하기</button><button class="btn ghost" id="scClose">닫기</button></div>'+
+      (resultHTML||'')+
+      '</div>';
+    Array.prototype.forEach.call(ov.querySelectorAll("[data-sminus]"),function(b){ b.onclick=function(){ var id=b.getAttribute("data-sminus"); counts[id]=Math.max(0,(counts[id]||0)-1); draw(); }; });
+    Array.prototype.forEach.call(ov.querySelectorAll("[data-splus]"),function(b){ b.onclick=function(){ var id=b.getAttribute("data-splus"); counts[id]=(counts[id]||0)+1; draw(); }; });
+    $("scClose").onclick=function(){ document.body.removeChild(ov); };
+    $("scCalc").onclick=function(){
+      var r=computeScore(cats,counts);
+      draw('<div class="score-result">기본 점수 '+r.base+'점 + 보너스 '+r.bonus+'점 − 벌칙 '+r.penalty+'점 = 총 '+r.total+'점</div>');
+    };
+  }
+  document.body.appendChild(ov); draw();
 }
 
 /* ---------------- 교환 ---------------- */
