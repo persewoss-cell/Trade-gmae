@@ -723,7 +723,7 @@ function scoreSettingsPanelHTML(){
         var declared=computeScore(cats,g.scoreCounts);
         return '<p class="score-summary" style="color:var(--err)">'+esc(g.name)+': (모둠에서 수정함) 제출 점수 '+declared.total+'점 / 원래 점수 '+live.total+'점</p>';
       }
-      return '<p class="score-summary">'+esc(g.name)+': 기본 점수 '+live.base+'점 + 보너스 '+live.bonus+'점 − 벌칙 '+live.penalty+'점 = 총 '+live.total+'점</p>';
+      return '<p class="score-summary">'+esc(g.name)+': 기본 점수 '+live.base+'점 + 영역보너스 '+live.bonus+'점 + 의식주보너스 '+live.lifeBonus+'점 − 영역벌점 '+live.penalty+'점 = 총 '+live.total+'점</p>';
     }).join("")+
     '</div>';
 }
@@ -1109,6 +1109,13 @@ function liveScoreCounts(g){
   });
   return counts;
 }
+var LIFE_BONUS_NAMES=["빵","옷","집"];
+var LIFE_BONUS_POINTS=100;
+function hasCountByName(cats,counts,name){
+  var found=false;
+  cats.forEach(function(cat){ cat.items.forEach(function(it){ if(it.name===name && (counts[it.id]||0)>0) found=true; }); });
+  return found;
+}
 function computeScore(cats,counts){
   var base=0,bonus=0,penalty=0,catDetails=[];
   cats.forEach(function(cat){
@@ -1124,7 +1131,8 @@ function computeScore(cats,counts){
     else if(enteredTypes<total/2){ catPenalty=100; penalty+=100; }
     catDetails.push({enteredTypes:enteredTypes,total:total,catBase:catBase,catBonus:catBonus,catPenalty:catPenalty});
   });
-  return {base:base,bonus:bonus,penalty:penalty,total:base+bonus-penalty,catDetails:catDetails};
+  var lifeBonus=LIFE_BONUS_NAMES.every(function(name){ return hasCountByName(cats,counts,name); })?LIFE_BONUS_POINTS:0;
+  return {base:base,bonus:bonus,lifeBonus:lifeBonus,penalty:penalty,total:base+bonus+lifeBonus-penalty,catDetails:catDetails};
 }
 function scoreCountsMatchCards(counts,cardsObj,cats){
   var match=true;
@@ -1162,7 +1170,7 @@ function openScoreModal(){
           tx.update(gameRef(),{groups:data.groups});
         });
       }).catch(function(){});
-      draw('<div class="score-result">기본 점수 '+r.base+'점 + 보너스 '+r.bonus+'점 − 벌칙 '+r.penalty+'점 = 총 '+r.total+'점</div>');
+      draw('<div class="score-result">기본 점수 '+r.base+'점 + 영역보너스 '+r.bonus+'점 + 의식주보너스 '+r.lifeBonus+'점 − 영역벌점 '+r.penalty+'점 = 총 '+r.total+'점</div>');
     };
   }
   document.body.appendChild(ov); draw();
