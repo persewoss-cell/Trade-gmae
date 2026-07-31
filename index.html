@@ -404,12 +404,33 @@ function checkAutoRetarget(){
     });
   }).catch(function(){});
 }
+var retargetLastNextAt=undefined, retargetFlashUntil=0;
 function tickRetargetCountdown(){
-  var el=document.getElementById("retargetCountdown");
-  if(!el||!game||!game.retargetNextAt) return;
-  var ms=Math.max(0,game.retargetNextAt-Date.now());
-  var totalSec=Math.floor(ms/1000), mm=Math.floor(totalSec/60), ss=totalSec%60;
-  el.textContent=mm+"분 "+(ss<10?"0":"")+ss+"초";
+  var active=game&&game.retargetMinutes>0&&game.retargetNextAt;
+  if(active){
+    if(retargetLastNextAt!==game.retargetNextAt){ retargetLastNextAt=game.retargetNextAt; retargetFlashUntil=Date.now()+3000; }
+  } else {
+    retargetLastNextAt=undefined; retargetFlashUntil=0;
+  }
+
+  var cd=document.getElementById("retargetCountdown");
+  if(cd&&active){
+    var ms=Math.max(0,game.retargetNextAt-Date.now());
+    var totalSec=Math.floor(ms/1000), mm=Math.floor(totalSec/60), ss=totalSec%60;
+    cd.textContent=mm+"분 "+(ss<10?"0":"")+ss+"초";
+  }
+
+  var alertEl=document.getElementById("retargetAlert");
+  if(!alertEl) return;
+  if(!active){ alertEl.innerHTML=""; return; }
+  var remain=game.retargetNextAt-Date.now();
+  if(remain>0&&remain<=10000){
+    alertEl.innerHTML='<div class="msg bad" style="margin:0 0 12px">⚠ '+Math.ceil(remain/1000)+'초 후 목표 숫자가 재설정돼요!</div>';
+  } else if(remain>10000&&Date.now()<retargetFlashUntil){
+    alertEl.innerHTML='<div class="msg ok" style="margin:0 0 12px">'+game.retargetMinutes+'분 뒤 목표 숫자가 재설정돼요.</div>';
+  } else {
+    alertEl.innerHTML="";
+  }
 }
 function restoreSession(){
   try{
@@ -531,7 +552,7 @@ function resChipsHTML(resObj){
   return h+'</div>';
 }
 function boardHTML(){
-  var h='<div class="panel board"><div class="block-label">자원(광물) 목표 숫자</div><div class="board-table">';
+  var h='<div class="panel board"><div class="block-label">자원(광물) 목표 숫자</div><div id="retargetAlert"></div><div class="board-table">';
   game.resources.forEach(function(r){ h+='<div class="res-cell"><span class="rn">'+esc(r.name)+'</span><span class="rt">'+r.target+'</span></div>'; });
   return h+'</div></div>';
 }
@@ -865,13 +886,14 @@ function settingsPanelHTML(){
     '<div class="settings-grid">'+
     '<div><div class="block-label">자원 목록 편집 <span style="font-weight:600;color:var(--muted)">· 목표 숫자는 서로 달라야 해요</span></div>'+
       '<div id="resEditor">'+resRows+'</div>'+
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">'+
-        '<button class="btn ghost slim" id="addRes">＋ 자원 추가</button>'+
-        '<button class="btn ghost slim" id="randomizeTargets">🎲 목표 숫자 무작위 재설정</button>'+
-        '<div class="divider"></div>'+
-        '<input class="num-in" id="retargetMinutes" type="number" min="1" value="'+(game.retargetMinutes>0?game.retargetMinutes:10)+'" inputmode="numeric" style="width:70px">'+
-        '<span class="hint" style="margin:0">분마다</span>'+
-        '<button class="btn '+(game.retargetMinutes>0?"ore":"ghost")+' slim" id="toggleRetarget">'+(game.retargetMinutes>0?"⏱ 주기적 재설정 끄기":"⏱ 주기적 재설정 켜기")+'</button>'+
+      '<div style="display:flex;gap:6px;flex-wrap:nowrap;align-items:center;margin-top:6px;overflow-x:auto;padding-bottom:2px">'+
+        '<button class="btn ghost slim" style="flex:none;white-space:nowrap" id="addRes">＋ 자원 추가</button>'+
+        '<button class="btn ghost slim" style="flex:none;white-space:nowrap" id="randomizeTargets">🎲 목표 숫자 무작위 재설정</button>'+
+        '<div class="divider" style="flex:none"></div>'+
+        '<span class="hint" style="margin:0;flex:none;white-space:nowrap">주기적 재설정</span>'+
+        '<input class="num-in" id="retargetMinutes" type="number" min="1" value="'+(game.retargetMinutes>0?game.retargetMinutes:10)+'" inputmode="numeric" style="width:52px;flex:none;padding:6px">'+
+        '<span class="hint" style="margin:0;flex:none;white-space:nowrap">분마다</span>'+
+        '<button class="btn '+(game.retargetMinutes>0?"ore":"ghost")+' slim" style="flex:none;white-space:nowrap" id="toggleRetarget">'+(game.retargetMinutes>0?"끄기":"켜기")+'</button>'+
       '</div>'+
       (game.retargetMinutes>0?'<p class="hint">'+game.retargetMinutes+'분마다 목표 숫자를 자동으로 재설정하고 저장해요(교사 화면이 열려 있어야 해요). 다음 재설정까지: <span id="retargetCountdown">계산 중…</span></p>':'')+
       '</div>'+
