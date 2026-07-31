@@ -308,7 +308,7 @@ function defaultGameData(groupCount){
   var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
   var resources=defaultResources(); var products=defaultProducts(); var scoreCategories=defaultScoreCategories();
   var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources,products,scoreCategories));
-  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreEditEnabled:true,scoreCategories:scoreCategories,products:products};
+  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreEditEnabled:true,scoreCategories:scoreCategories,products:products,retargetMinutes:0,retargetNextAt:null};
 }
 
 function normalize(str){
@@ -387,6 +387,29 @@ function init(){
   // 연결 상태 표시용
   db.enableNetwork().then(function(){ connected=true; renderCurrent(); }).catch(function(){});
   restoreSession();
+  setInterval(checkAutoRetarget,10000);
+  setInterval(tickRetargetCountdown,1000);
+}
+/* ---------------- 목표 숫자 주기적 재설정 ---------------- */
+function checkAutoRetarget(){
+  if(role!=="teacher"||!game||!(game.retargetMinutes>0)||!game.retargetNextAt) return;
+  if(Date.now()<game.retargetNextAt) return;
+  db.runTransaction(function(tx){
+    return tx.get(gameRef()).then(function(snap){
+      var data=snap.data();
+      if(!data||!(data.retargetMinutes>0)||!data.retargetNextAt||Date.now()<data.retargetNextAt) return;
+      var targets=randomUniqueTargets(data.resources.length,2,90);
+      var newRes=data.resources.map(function(r,i){ return {id:r.id,name:r.name,target:targets[i]}; });
+      tx.update(gameRef(),{resources:newRes,retargetNextAt:Date.now()+data.retargetMinutes*60000});
+    });
+  }).catch(function(){});
+}
+function tickRetargetCountdown(){
+  var el=document.getElementById("retargetCountdown");
+  if(!el||!game||!game.retargetNextAt) return;
+  var ms=Math.max(0,game.retargetNextAt-Date.now());
+  var totalSec=Math.floor(ms/1000), mm=Math.floor(totalSec/60), ss=totalSec%60;
+  el.textContent=mm+"분 "+(ss<10?"0":"")+ss+"초";
 }
 function restoreSession(){
   try{
@@ -842,10 +865,16 @@ function settingsPanelHTML(){
     '<div class="settings-grid">'+
     '<div><div class="block-label">자원 목록 편집 <span style="font-weight:600;color:var(--muted)">· 목표 숫자는 서로 달라야 해요</span></div>'+
       '<div id="resEditor">'+resRows+'</div>'+
-      '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'+
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">'+
         '<button class="btn ghost slim" id="addRes">＋ 자원 추가</button>'+
         '<button class="btn ghost slim" id="randomizeTargets">🎲 목표 숫자 무작위 재설정</button>'+
-      '</div></div>'+
+        '<div class="divider"></div>'+
+        '<input class="num-in" id="retargetMinutes" type="number" min="1" value="'+(game.retargetMinutes>0?game.retargetMinutes:10)+'" inputmode="numeric" style="width:70px">'+
+        '<span class="hint" style="margin:0">분마다</span>'+
+        '<button class="btn '+(game.retargetMinutes>0?"ore":"ghost")+' slim" id="toggleRetarget">'+(game.retargetMinutes>0?"⏱ 주기적 재설정 끄기":"⏱ 주기적 재설정 켜기")+'</button>'+
+      '</div>'+
+      (game.retargetMinutes>0?'<p class="hint">'+game.retargetMinutes+'분마다 목표 숫자를 자동으로 재설정하고 저장해요(교사 화면이 열려 있어야 해요). 다음 재설정까지: <span id="retargetCountdown">계산 중…</span></p>':'')+
+      '</div>'+
     '<div><div class="block-label">모둠 수</div><div class="ctl-row" style="margin-bottom:20px"><input class="num-in" id="setGroupCount" type="number" min="1" max="12" value="'+game.groupCount+'" inputmode="numeric"><span class="hint" style="margin:0;align-self:center">1 ~ 12개</span></div>'+
       '<div class="block-label">배분 비율(가중치)</div><div class="weights-grid" id="weightsGrid">'+wCells+'</div>'+
       '<button class="btn ghost slim" id="weightsReset" style="margin-top:10px">비율 모두 1로</button></div>'+
@@ -870,6 +899,15 @@ function wireSettings(){
     Array.prototype.forEach.call(rows,function(row,i){ row.querySelector(".rtarget").value=targets[i]; });
   };
   $("weightsReset").onclick=function(){ Array.prototype.forEach.call($("weightsGrid").querySelectorAll("input"),function(i){i.value=1;}); };
+  $("toggleRetarget").onclick=function(){
+    if(game.retargetMinutes>0){
+      gameRef().update({retargetMinutes:0,retargetNextAt:null}).catch(function(){ alert("주기적 재설정 변경에 실패했어요."); });
+      return;
+    }
+    var n=Math.floor(Number($("retargetMinutes").value));
+    if(!(n>=1)) return alert("분은 1 이상으로 입력해 주세요.");
+    gameRef().update({retargetMinutes:n,retargetNextAt:Date.now()+n*60000}).catch(function(){ alert("주기적 재설정 변경에 실패했어요."); });
+  };
   $("cancelSettings").onclick=function(){ settingsOpen=false; renderTeacher(); };
   $("saveSettings").onclick=saveSettings;
 }
