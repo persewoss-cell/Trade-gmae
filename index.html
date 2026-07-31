@@ -420,6 +420,8 @@ function tickRetargetCountdown(){
     cd.textContent=mm+"분 "+(ss<10?"0":"")+ss+"초";
   }
 
+  if(active&&game.retargetNextAt-Date.now()<=0) checkAutoRetarget();
+
   var alertEl=document.getElementById("retargetAlert");
   if(!alertEl) return;
   if(!active){ alertEl.innerHTML=""; return; }
