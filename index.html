@@ -64,6 +64,15 @@
   .grp-pick button.selected{background:var(--ore);color:#fff;border-color:var(--ore);}
   .grp-pick.compact{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px;}
   .grp-pick.compact button{padding:8px 4px;font-size:13px;}
+  .room-list-wrap{border-top:1.5px dashed var(--line);margin-top:16px;padding-top:14px;}
+  .room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;}
+  .room-card{position:relative;background:var(--ore-soft);border:1.5px solid var(--ore-line);border-radius:14px;padding:16px 8px 10px;min-height:82px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:filter .12s,transform .05s;}
+  .room-card:hover{filter:brightness(.97);} .room-card:active{transform:translateY(1px);}
+  .room-card .rcode{font-family:var(--mono);font-size:24px;font-weight:800;letter-spacing:.1em;color:#7a4d0e;}
+  .room-card .rstatus{font-size:11px;font-weight:700;color:var(--muted);margin-top:5px;}
+  .room-card .rdel{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:8px;border:none;background:rgba(255,255,255,.75);color:var(--err);font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;}
+  .room-card .rdel:hover{background:#fff;}
+  .room-empty{color:var(--muted);font-size:13px;padding:6px 2px;margin:0;}
   .setup{background:#fff;border:2px solid var(--err);border-radius:16px;padding:20px;max-width:720px;margin:0 auto;}
   .setup h2{color:var(--err);margin-bottom:8px;} .setup ol{margin:10px 0 0;padding-left:20px;} .setup li{margin-bottom:8px;}
   .setup code{background:#f2f4f8;padding:2px 6px;border-radius:6px;font-family:var(--mono);font-size:13px;}
@@ -356,6 +365,7 @@ var db=null, ready=false;
 var role=null, code=null, myIdx=null;   // 이 기기의 정체성
 var game=null, trades=[];               // 실시간 스냅샷
 var unsubGame=null, unsubTrades=null;
+var rooms=[], unsubRooms=null;          // 랜딩화면 방 목록
 var formula="", groupMsg=null, tradeMsg=null, productMsg=null, settingsOpen=false, scoreSettingsOpen=false, recipeSettingsOpen=false, connected=false;
 var SESSION_KEY="trade-online-session";
 
@@ -447,6 +457,7 @@ function clearSession(){ try{ sessionStorage.removeItem(SESSION_KEY); }catch(e){
 /* ---------------- 실시간 구독 ---------------- */
 function subscribe(){
   if(unsubGame) unsubGame(); if(unsubTrades) unsubTrades();
+  if(unsubRooms){ unsubRooms(); unsubRooms=null; }
   unsubGame=gameRef().onSnapshot(function(snap){
     connected=true;
     if(!snap.exists){ alert("게임을 찾을 수 없어요(코드가 바뀌었거나 삭제됨)."); leave(); return; }
@@ -494,6 +505,7 @@ function renderLanding(){
       '<input class="code-in" id="gCode" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="코드" />'+
       '<button class="btn ore" id="gNext">다음</button>'+
       '<div id="grpPickWrap"></div>'+
+      '<div class="room-list-wrap"><div class="block-label">전체 방 목록</div><div id="roomListWrap"><p class="room-empty">불러오는 중...</p></div></div>'+
     '</div>'+
   '</div>';
 
@@ -525,6 +537,65 @@ function renderLanding(){
         b.onclick=function(){ role="group"; code=c; myIdx=+b.dataset.i; subscribe(); };
       });
     }).catch(function(){ alert("연결에 실패했어요."); });
+  };
+
+  subscribeRoomList();
+}
+
+/* ---------------- 방 목록 (랜딩화면) ---------------- */
+function subscribeRoomList(){
+  if(unsubRooms){ unsubRooms(); unsubRooms=null; }
+  unsubRooms=db.collection("games").orderBy("createdAt","desc").onSnapshot(function(qs){
+    rooms=qs.docs.map(function(d){ var o=d.data(); o.code=d.id; return o; });
+    renderRoomList();
+  }, function(){
+    var w=$("roomListWrap"); if(w) w.innerHTML='<p class="room-empty">방 목록을 불러오지 못했어요.</p>';
+  });
+}
+function renderRoomList(){
+  var w=$("roomListWrap"); if(!w) return;
+  if(!rooms.length){ w.innerHTML='<p class="room-empty">아직 생성된 방이 없어요.</p>'; return; }
+  var h='<div class="room-grid">';
+  rooms.forEach(function(r){
+    var gc=r.groupCount||((r.groups&&r.groups.length)||0);
+    h+='<div class="room-card" data-code="'+esc(r.code)+'">'+
+       '<button type="button" class="rdel" data-delroom="'+esc(r.code)+'" title="방 삭제" aria-label="방 삭제">🗑</button>'+
+       '<span class="rcode">'+esc(r.code)+'</span>'+
+       '<span class="rstatus">'+gc+'모둠 · 진행중</span>'+
+       '</div>';
+  });
+  h+='</div>';
+  w.innerHTML=h;
+  Array.prototype.forEach.call(w.querySelectorAll(".room-card"),function(card){
+    card.onclick=function(e){
+      if(e.target.closest("[data-delroom]")) return;
+      var c=card.getAttribute("data-code");
+      var input=$("gCode"); if(input){ input.value=c; input.focus(); }
+    };
+  });
+  Array.prototype.forEach.call(w.querySelectorAll("[data-delroom]"),function(b){
+    b.onclick=function(e){ e.stopPropagation(); confirmDeleteRoom(b.getAttribute("data-delroom")); };
+  });
+}
+function confirmDeleteRoom(c){
+  var ov=document.createElement("div"); ov.className="overlay";
+  ov.innerHTML='<div class="modal" style="max-width:340px">'+
+    '<h3>방 삭제</h3>'+
+    '<p class="sub2" style="margin-bottom:2px">코드 <b style="font-family:var(--mono)">'+esc(c)+'</b> 방을 정말 삭제할까요?</p>'+
+    '<p style="color:var(--err);font-weight:700;font-size:13.5px;margin:8px 0 0">삭제하면 되돌릴 수 없고, 참여 중인 모둠 기기의 연결도 모두 끊겨요.</p>'+
+    '<div class="foot"><button class="btn ghost" id="roomDelNo">아니오</button><button class="btn danger" id="roomDelYes">예</button></div>'+
+    '</div>';
+  document.body.appendChild(ov);
+  function close(){ if(ov.parentNode) document.body.removeChild(ov); }
+  ov.querySelector("#roomDelNo").onclick=close;
+  ov.onclick=function(e){ if(e.target===ov) close(); };
+  ov.querySelector("#roomDelYes").onclick=function(){
+    var yesBtn=ov.querySelector("#roomDelYes"); yesBtn.disabled=true;
+    db.collection("games").doc(c).collection("trades").get().then(function(qs){
+      var batch=db.batch(); qs.forEach(function(d){ batch.delete(d.ref); }); return batch.commit();
+    }).then(function(){ return db.collection("games").doc(c).delete(); })
+      .then(close)
+      .catch(function(){ alert("삭제에 실패했어요."); close(); });
   };
 }
 
