@@ -64,15 +64,15 @@
   .grp-pick button.selected{background:var(--ore);color:#fff;border-color:var(--ore);}
   .grp-pick.compact{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px;}
   .grp-pick.compact button{padding:8px 4px;font-size:13px;}
-  .room-list-wrap{border-top:1.5px dashed var(--line);margin-top:16px;padding-top:14px;}
-  .room-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(108px,1fr));gap:10px;}
-  .room-card{position:relative;background:var(--ore-soft);border:1.5px solid var(--ore-line);border-radius:14px;padding:16px 8px 10px;min-height:82px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;transition:filter .12s,transform .05s;}
+  .room-list-wrap{margin:2px 0 12px;}
+  .room-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
+  .room-card{position:relative;background:var(--ore-soft);border:1.5px solid var(--ore-line);border-radius:10px;padding:5px 3px 4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;line-height:1.1;transition:filter .12s,transform .05s;}
   .room-card:hover{filter:brightness(.97);} .room-card:active{transform:translateY(1px);}
-  .room-card .rcode{font-family:var(--mono);font-size:24px;font-weight:800;letter-spacing:.1em;color:#7a4d0e;}
-  .room-card .rstatus{font-size:11px;font-weight:700;color:var(--muted);margin-top:5px;}
-  .room-card .rdel{position:absolute;top:5px;right:5px;width:26px;height:26px;border-radius:8px;border:none;background:rgba(255,255,255,.75);color:var(--err);font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;}
+  .room-card .rcode{font-family:var(--mono);font-size:15px;font-weight:800;letter-spacing:.05em;color:#7a4d0e;}
+  .room-card .rstatus{font-size:9px;font-weight:700;color:var(--muted);margin-top:2px;}
+  .room-card .rdel{position:absolute;top:2px;right:2px;width:16px;height:16px;border-radius:5px;border:none;background:rgba(255,255,255,.8);color:var(--err);font-size:9px;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;}
   .room-card .rdel:hover{background:#fff;}
-  .room-empty{color:var(--muted);font-size:13px;padding:6px 2px;margin:0;}
+  .room-empty{color:var(--muted);font-size:13px;padding:4px 2px;margin:0;}
   .setup{background:#fff;border:2px solid var(--err);border-radius:16px;padding:20px;max-width:720px;margin:0 auto;}
   .setup h2{color:var(--err);margin-bottom:8px;} .setup ol{margin:10px 0 0;padding-left:20px;} .setup li{margin-bottom:8px;}
   .setup code{background:#f2f4f8;padding:2px 6px;border-radius:6px;font-family:var(--mono);font-size:13px;}
@@ -501,11 +501,11 @@ function renderLanding(){
       '<button class="btn ghost" id="tOpen">교사 화면 열기</button>'+
     '</div>'+
     '<div class="lcard group"><span class="role">모둠용</span><h2>게임 참여하기</h2>'+
+      '<div class="room-list-wrap"><div class="block-label">전체 방 목록</div><div id="roomListWrap"><p class="room-empty">불러오는 중...</p></div></div>'+
       '<p><b>방 코드</b>를 입력하세요.</p>'+
       '<input class="code-in" id="gCode" maxlength="4" inputmode="numeric" pattern="[0-9]*" placeholder="코드" />'+
       '<button class="btn ore" id="gNext">다음</button>'+
       '<div id="grpPickWrap"></div>'+
-      '<div class="room-list-wrap"><div class="block-label">전체 방 목록</div><div id="roomListWrap"><p class="room-empty">불러오는 중...</p></div></div>'+
     '</div>'+
   '</div>';
 
