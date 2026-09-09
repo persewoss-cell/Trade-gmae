@@ -317,7 +317,7 @@ function defaultGameData(groupCount){
   var gc=(groupCount>=1&&groupCount<=12)?groupCount:6;
   var resources=defaultResources(); var products=defaultProducts(); var scoreCategories=defaultScoreCategories();
   var groups=[]; for(var i=0;i<gc;i++) groups.push(makeGroup(i,resources,products,scoreCategories));
-  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreEditEnabled:true,scoreCategories:scoreCategories,products:products,retargetMinutes:0,retargetNextAt:null};
+  return {createdAt:Date.now(),groupCount:gc,nextId:resources.length+1,resources:resources,weights:defaultWeights(),groups:groups,hintsEnabled:false,scoreEnabled:false,scoreEditEnabled:true,scoreCategories:scoreCategories,products:products,retargetMinutes:0,retargetNextAt:null,redeemEnabled:true};
 }
 
 function normalize(str){
@@ -507,8 +507,10 @@ function renderLanding(){
       '<button class="btn ore" id="gNext">다음</button>'+
       '<div id="grpPickWrap"></div>'+
     '</div>'+
-  '</div>';
+  '</div>'+
+  '<div style="text-align:center;margin-top:22px"><button class="btn ghost" id="howToPlayBtn">📖 게임 방법 알아보기</button></div>';
 
+  $("howToPlayBtn").onclick=openHowToPlayModal;
   $("createBtn").onclick=function(){
     var gc=parseInt($("createGroupCount").value,10);
     if(isNaN(gc)||gc<1||gc>12) return alert("모둠 수는 1~12 사이로 입력해 주세요.");
@@ -571,6 +573,7 @@ function renderRoomList(){
       if(e.target.closest("[data-delroom]")) return;
       var c=card.getAttribute("data-code");
       var input=$("gCode"); if(input){ input.value=c; input.focus(); }
+      var tInput=$("tCode"); if(tInput){ tInput.value=c; }
     };
   });
   Array.prototype.forEach.call(w.querySelectorAll("[data-delroom]"),function(b){
@@ -597,6 +600,46 @@ function confirmDeleteRoom(c){
       .then(close)
       .catch(function(){ alert("삭제에 실패했어요."); close(); });
   };
+}
+
+/* ---------------- 게임 방법 알아보기 ---------------- */
+function openHowToPlayModal(){
+  var tab="teacher";
+  var teacherHTML=
+    '<ol>'+
+    '<li><b>게임 만들기</b>에서 모둠 수를 정하고 [새 게임 만들기]를 누르면 4자리 <b>방 코드</b>가 생겨요. 이 코드를 모둠 태블릿에 알려주세요.</li>'+
+    '<li>관리자 패널의 <b>카드 배분</b>으로 모둠에 숫자(1~9)·연산자(+,−,×,÷,(,)) 카드를 무작위로 나눠줘요.</li>'+
+    '<li><b>⚙ 설정</b>: 힌트 켜기/끄기, 자원 목표 숫자·목록, 모둠 수, 카드 배분 비율, <b>실물 카드 교환 사용 여부</b>를 정해요.</li>'+
+    '<li><b>🔧 교환조건</b>: 각 생산품을 만들 때 필요한 자원·생산품 재료(레시피)를 자유롭게 바꿀 수 있어요.</li>'+
+    '<li><b>🏆 점수 계산</b>: 점수 계산 기능을 켜고 카드별 점수를 설정해요. 모둠별 실시간 점수도 여기서 볼 수 있어요.</li>'+
+    '<li>모둠이 보낸 카드 교환 제안·생산품 제작 신청은 <b>진행 중 교환</b>·<b>생산품 교환 신청목록</b>에서 수락하거나 거절해요.</li>'+
+    '<li>화면 아래 <b>모둠 현황</b>에서 모든 모둠의 카드·자원·생산품 상황을 실시간으로 볼 수 있어요.</li>'+
+    '</ol>';
+  var groupHTML=
+    '<ol>'+
+    '<li>방 코드와 우리 모둠 번호를 골라 입장해요.</li>'+
+    '<li>선생님이 나눠준 숫자(1~9)·연산자(+,−,×,÷,()) 카드가 화면에 표시돼요.</li>'+
+    '<li><b>수식으로 자원 만들기</b>에서 사칙연산을 모두 한 번씩 사용한 식을 만들고 [자원 생성]을 누르면, 계산 값이 어떤 자원의 목표 숫자와 같을 때 그 자원이 만들어져요.</li>'+
+    '<li>(선생님이 켜두었다면) 만든 자원을 실물 카드와 바꾸려면 <b>교환 확인</b> 버튼으로 선생님께 확인받아요.</li>'+
+    '<li><b>생산품 카드 생성</b>에서 자원(또는 다른 생산품)을 재료로 원하는 생산품을 무역센터에 신청하면, 선생님이 승인했을 때 생산품이 만들어져요.</li>'+
+    '<li><b>카드 교환(무역)</b>에서 다른 모둠에 카드를 주고받는 제안을 보내거나, 받은 제안을 수락·거절할 수 있어요.</li>'+
+    '<li>(선생님이 켜두었다면) <b>점수 계산</b>에서 우리 모둠의 점수를 계산해 볼 수 있어요.</li>'+
+    '</ol>';
+  var ov=document.createElement("div"); ov.className="overlay";
+  function draw(){
+    ov.innerHTML='<div class="modal" style="max-width:640px"><h3>게임 방법 알아보기</h3>'+
+      '<p class="sub2">사칙연산으로 자원을 만들고 조합하여 물건을 생산하는 게임이에요.</p>'+
+      '<div class="grp-pick compact" id="htpTabs" style="grid-template-columns:1fr 1fr;margin-bottom:14px">'+
+        '<button type="button" data-tab="teacher" class="'+(tab==="teacher"?"selected":"")+'">교사용</button>'+
+        '<button type="button" data-tab="group" class="'+(tab==="group"?"selected":"")+'">모둠용</button>'+
+      '</div>'+
+      '<div style="max-height:58vh;overflow:auto;line-height:1.7;font-size:14.5px">'+(tab==="teacher"?teacherHTML:groupHTML)+'</div>'+
+      '<div class="foot"><button class="btn ghost" id="htpClose">닫기</button></div></div>';
+    Array.prototype.forEach.call(ov.querySelectorAll("[data-tab]"),function(b){ b.onclick=function(){ tab=b.getAttribute("data-tab"); draw(); }; });
+    $("htpClose").onclick=function(){ if(ov.parentNode) document.body.removeChild(ov); };
+  }
+  ov.onclick=function(e){ if(e.target===ov) document.body.removeChild(ov); };
+  document.body.appendChild(ov); draw();
 }
 
 /* ---------------- 공통 조각 ---------------- */
@@ -680,10 +723,13 @@ function recipeItemsList(prod){
   for(var pid in pr){ parts.push(prodNameById(pid)+" "+pr[pid]+"개"); }
   return parts.join(", ");
 }
+function redeemEnabled(){ return game.redeemEnabled!==false; }
+function resPool(gr){ return redeemEnabled()?(gr.redeemed||{}):(gr.resources||{}); }
+function resPoolRef(gr){ return redeemEnabled()?(gr.redeemed=gr.redeemed||{}):(gr.resources=gr.resources||{}); }
 function canAffordProduct(g,prod){
   var needRes=(prod.recipe&&prod.recipe.res)||{}, needProd=(prod.recipe&&prod.recipe.prod)||{};
-  var redeemed=g.redeemed||{};
-  for(var rid in needRes){ if((redeemed[rid]||0)<needRes[rid]) return false; }
+  var pool=resPool(g);
+  for(var rid in needRes){ if((pool[rid]||0)<needRes[rid]) return false; }
   for(var pid in needProd){ if(((g.products&&g.products[pid])||0)<needProd[pid]) return false; }
   return true;
 }
@@ -782,11 +828,13 @@ function renderTeacher(){
     h+='<div class="gcard"><div class="gtop"><span class="badge">'+(i+1)+'</span><span class="gn">'+esc(g.name)+'</span></div>'+
        '<div class="gbody"><p class="mini-label">보유 카드</p>'+cardsGridHTML(g.cards)+
        '<p class="mini-label" style="margin-top:6px">생성한 자원</p>'+resChipsHTML(g.resources)+
-       '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">'+
-         '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
-         (pendingTotal>0?'<button class="btn ore slim" data-redeem="'+i+'">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
-       '</div>'+
-       resChipsHTML(redeemedObj)+
+       (redeemEnabled()?(
+         '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:6px">'+
+           '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
+           (pendingTotal>0?'<button class="btn ore slim" data-redeem="'+i+'">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
+         '</div>'+
+         resChipsHTML(redeemedObj)
+       ):'')+
        '<p class="mini-label" style="margin-top:6px">생산품 카드 생성</p>'+productChipsHTML(g.products)+
        '</div></div>';
   });
@@ -796,9 +844,9 @@ function renderTeacher(){
   wireProductChips(s);
 
   $("leaveBtn").onclick=leave;
-  $("tSettings").onclick=function(){ settingsOpen=!settingsOpen; renderTeacher(); };
-  $("tRecipeSettings").onclick=function(){ recipeSettingsOpen=!recipeSettingsOpen; renderTeacher(); };
-  $("tScoreSettings").onclick=function(){ scoreSettingsOpen=!scoreSettingsOpen; renderTeacher(); };
+  $("tSettings").onclick=function(){ var next=!settingsOpen; recipeSettingsOpen=false; scoreSettingsOpen=false; settingsOpen=next; renderTeacher(); };
+  $("tRecipeSettings").onclick=function(){ var next=!recipeSettingsOpen; settingsOpen=false; scoreSettingsOpen=false; recipeSettingsOpen=next; renderTeacher(); };
+  $("tScoreSettings").onclick=function(){ var next=!scoreSettingsOpen; settingsOpen=false; recipeSettingsOpen=false; scoreSettingsOpen=next; renderTeacher(); };
   $("distOne").onclick=function(){ var i=+$("distGroup").value,n=+$("distN").value; if(!(n>=1))return alert("장수를 1 이상으로."); doDistribute(i,n); };
   $("distAll").onclick=function(){ var n=+$("distAllN").value; if(!(n>=1))return alert("장수를 1 이상으로."); doDistribute("all",n); };
   $("tResetCards").onclick=doResetCards;
@@ -956,6 +1004,9 @@ function settingsPanelHTML(){
     '<div class="block-label" style="margin-top:0">힌트 설정</div>'+
     '<button class="btn '+(game.hintsEnabled?"ore":"ghost")+' slim" id="toggleHints">힌트 주기: '+(game.hintsEnabled?"켜짐 (계산 값을 보여줘요)":"꺼짐 (틀렸다고만 알려줘요)")+'</button>'+
     '<p class="hint">"수식으로 자원 만들기"에서 계산이 틀렸을 때 학생에게 실제 계산 값을 보여줄지 정해요. 누르면 모든 태블릿에 바로 반영돼요.</p>'+
+    '<div class="block-label" style="margin-top:18px">실물 카드 교환 설정</div>'+
+    '<button class="btn '+(redeemEnabled()?"ore":"ghost")+' slim" id="toggleRedeem">실물 카드 교환: '+(redeemEnabled()?"켜짐 (자원을 실물 카드와 교환한 뒤 사용해요)":"꺼짐 (생성한 자원을 바로 사용해요)")+'</button>'+
+    '<p class="hint">끄면 모둠·교사 화면에서 "실물 카드 교환" 부분이 사라지고, 모둠이 만든 자원을 실물 카드로 바꾸지 않고 바로 생산품 제작·교환에 쓸 수 있어요. 누르면 모든 태블릿에 바로 반영돼요.</p>'+
     '<div class="settings-grid">'+
     '<div><div class="block-label">자원 목록 편집 <span style="font-weight:600;color:var(--muted)">· 목표 숫자는 서로 달라야 해요</span></div>'+
       '<div id="resEditor">'+resRows+'</div>'+
@@ -979,6 +1030,9 @@ function settingsPanelHTML(){
 function wireSettings(){
   $("toggleHints").onclick=function(){
     gameRef().update({hintsEnabled:!game.hintsEnabled}).catch(function(){ alert("힌트 설정 변경에 실패했어요."); });
+  };
+  $("toggleRedeem").onclick=function(){
+    gameRef().update({redeemEnabled:!redeemEnabled()}).catch(function(){ alert("실물 카드 교환 설정 변경에 실패했어요."); });
   };
   Array.prototype.forEach.call($("resEditor").querySelectorAll(".del"),function(b){ b.onclick=function(){ b.closest(".res-edit-row").remove(); }; });
   $("addRes").onclick=function(){
@@ -1090,11 +1144,13 @@ function renderGroup(){
   // 내 카드 + 자원 + 실물 카드 교환 + 생산품 카드 생성
   h+='<div class="panel"><div class="block-label" style="justify-content:space-between"><span>우리 모둠 카드</span></div>'+cardsGridHTML(g.cards)+
      '<p class="mini-label" style="margin-top:14px">생성한 자원</p>'+resChipsHTML(g.resources)+
-     '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">'+
-       '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
-       (pendingTotal>0?'<button class="btn ore slim" id="redeemBtn">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
-     '</div>'+
-     resChipsHTML(redeemedObj)+
+     (redeemEnabled()?(
+       '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px">'+
+         '<p class="mini-label" style="margin:0">실물 카드 교환 완료</p>'+
+         (pendingTotal>0?'<button class="btn ore slim" id="redeemBtn">교환 확인 · 대기 '+pendingTotal+'개</button>':'')+
+       '</div>'+
+       resChipsHTML(redeemedObj)
+     ):'')+
      '<p class="mini-label" style="margin-top:16px">생산품 카드 생성</p>'+productChipsHTML(g.products)+
      '</div>';
 
@@ -1239,7 +1295,7 @@ function liveScoreCounts(g){
     cat.items.forEach(function(it){
       var n=0, r=null, p=null;
       game.resources.forEach(function(rr){ if(rr.name===it.name) r=rr; });
-      if(r){ n=(g.redeemed&&g.redeemed[r.id])||0; }
+      if(r){ n=resPool(g)[r.id]||0; }
       else{
         (game.products||defaultProducts()).forEach(function(pp){ if(pp.name===it.name) p=pp; });
         if(p) n=(g.products&&g.products[p.id])||0;
@@ -1364,7 +1420,7 @@ function openTradeModal(){
   var TRADE_KEYS=ALL.concat(game.resources.map(function(r){return r.id;})).concat((game.products||defaultProducts()).map(function(p){return p.id;}));
   var WANT_KEYS=TRADE_KEYS, GIVE_KEYS=TRADE_KEYS;
   function ownedCount(k){
-    if(isResourceId(k)) return (g.redeemed&&g.redeemed[k])||0;
+    if(isResourceId(k)) return resPool(g)[k]||0;
     if(isProductId(k)) return (g.products&&g.products[k])||0;
     return g.cards[k]||0;
   }
@@ -1414,17 +1470,17 @@ function acceptTrade(id){
       from.redeemed=from.redeemed||{}; to.redeemed=to.redeemed||{};
       from.products=from.products||{}; to.products=to.products||{};
       function owned(gr,k){
-        if(isResourceId(k,data.resources)) return gr.redeemed[k]||0;
+        if(isResourceId(k,data.resources)) return resPoolRef(gr)[k]||0;
         if(isProductId(k,data.products)) return gr.products[k]||0;
         return gr.cards[k]||0;
       }
       function addOwned(gr,k,n){
-        if(isResourceId(k,data.resources)) gr.redeemed[k]=(gr.redeemed[k]||0)+n;
+        if(isResourceId(k,data.resources)) resPoolRef(gr)[k]=(resPoolRef(gr)[k]||0)+n;
         else if(isProductId(k,data.products)) gr.products[k]=(gr.products[k]||0)+n;
         else gr.cards[k]=(gr.cards[k]||0)+n;
       }
       function subOwned(gr,k,n){
-        if(isResourceId(k,data.resources)) gr.redeemed[k]-=n;
+        if(isResourceId(k,data.resources)) resPoolRef(gr)[k]-=n;
         else if(isProductId(k,data.products)) gr.products[k]-=n;
         else gr.cards[k]-=n;
       }
@@ -1456,12 +1512,12 @@ function acceptProductRequest(id){
       if(!prod) throw new Error("NOPROD");
       var needRes=(prod.recipe&&prod.recipe.res)||{}, needProd=(prod.recipe&&prod.recipe.prod)||{};
       var short=false;
-      gg.redeemed=gg.redeemed||{};
-      for(var rid in needRes){ if(needRes[rid]>(gg.redeemed[rid]||0)) short=true; }
+      var pool=resPoolRef(gg);
+      for(var rid in needRes){ if(needRes[rid]>(pool[rid]||0)) short=true; }
       var gp=gg.products||{};
       for(var pid in needProd){ if(needProd[pid]>(gp[pid]||0)) short=true; }
       if(short) throw new Error("SHORT");
-      for(var rid2 in needRes){ gg.redeemed[rid2]-=needRes[rid2]; }
+      for(var rid2 in needRes){ pool[rid2]-=needRes[rid2]; }
       for(var pid2 in needProd){ gp[pid2]-=needProd[pid2]; }
       gp[t.productId]=(gp[t.productId]||0)+1;
       gg.products=gp;
