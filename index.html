@@ -572,8 +572,9 @@ function renderRoomList(){
     card.onclick=function(e){
       if(e.target.closest("[data-delroom]")) return;
       var c=card.getAttribute("data-code");
-      var input=$("gCode"); if(input){ input.value=c; input.focus(); }
+      var input=$("gCode"); if(input){ input.value=c; }
       var tInput=$("tCode"); if(tInput){ tInput.value=c; }
+      var next=$("gNext"); if(next){ next.click(); }
     };
   });
   Array.prototype.forEach.call(w.querySelectorAll("[data-delroom]"),function(b){
